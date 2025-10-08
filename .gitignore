@@ -1,0 +1,74 @@
+# Dremio Project - Git Ignore
+# ============================
+
+# Configuration et secrets
+.env
+*.log
+.env.local
+.env.production
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+venv/
+venv_*/
+venv_dremio_311/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.project
+.settings/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Docker volumes et données
+docker-volume/db-data/
+**/db-data/
+env/data/
+env/logs/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+*.backup
+
+# Logs
+*.log
+logs/
+dremio_ingestion.log
+ingestion_output.log
+
+# Test outputs
+test_results/
+coverage/

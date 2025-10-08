@@ -1,0 +1,112 @@
+# Requirements pour le projet Dremio - Configuration complète
+# ================================================================
+# Installation avec environnement virtuel recommandé :
+#   python -m venv venv_dremio
+#   venv_dremio\Scripts\activate (Windows)
+#   pip install -r requirements.txt
+
+# ============================================================================
+# CORE DEPENDENCIES - API et HTTP  
+# ============================================================================
+
+# HTTP client pour API Dremio et OpenMetadata
+requests==2.32.3
+
+# Environment variables
+python-dotenv==1.0.1
+
+# URL utilities et sécurité
+urllib3>=2.0.0
+certifi==2025.1.31
+
+# JSON processing et validation
+jsonschema>=4.19.0
+
+# ============================================================================
+# PYDREMIO - API ARROW FLIGHT POUR DREMIO (Nécessite Python 3.12+)
+# ============================================================================
+
+# PyDremio client pour Arrow Flight API (commenté - incompatible Python 3.11)
+# pydremio==0.4.0
+
+# Apache Arrow (version compatible Python 3.11)
+pyarrow>=14.0.0
+
+# Typing extensions
+typing-extensions>=4.7.0
+
+# ============================================================================
+# DATA PROCESSING ET ANALYTICS
+# ============================================================================
+
+# Pandas pour manipulation de données
+pandas==2.2.3
+
+# Polars pour performance (alternative à Pandas) 
+polars==1.23.0
+
+# Table formatting pour affichage
+prettytable==3.14.0
+
+# Date/time utilities
+python-dateutil>=2.8.2
+
+# ============================================================================
+# DATABASE CONNECTORS
+# ============================================================================
+
+# PostgreSQL connector (pour tests directs et Dremio JDBC)
+psycopg2-binary>=2.9.7
+
+# OpenSearch/Elasticsearch connector
+opensearch-py>=2.4.0
+elasticsearch>=8.10.0
+
+# ============================================================================
+# CONFIGURATION ET PARSING
+# ============================================================================
+
+# YAML parser pour fichiers de configuration
+PyYAML>=6.0.1
+
+# Charset detection
+charset-normalizer>=3.2.0
+
+# ============================================================================
+# LOGGING ET MONITORING
+# ============================================================================
+
+# Enhanced logging avec couleurs
+colorlog>=6.7.0
+
+# Structured logging  
+structlog>=23.1.0
+
+# ============================================================================
+# DEVELOPMENT ET TESTING (optionnel - décommentez si nécessaire)
+# ============================================================================
+
+# Testing framework
+pytest>=7.4.0
+pytest-cov>=4.1.0
+
+# Code quality
+# black>=23.7.0
+# flake8>=6.0.0
+# mypy>=1.5.0
+
+# ============================================================================
+# OPENMETADATA INGESTION (optionnel - très lourd, commenté par défaut)
+# ============================================================================
+
+# Framework OpenMetadata complet (décommentez si nécessaire)
+# openmetadata-ingestion[postgres,opensearch]==1.9.7
+
+# ============================================================================
+# NOTES D'INSTALLATION ET USAGE
+# ============================================================================
+# 1. Environnement virtuel FORTEMENT recommandé
+# 2. Compatible Python 3.8+ (testé 3.13)
+# 3. PyDremio nécessite Arrow Flight actif sur Dremio (port 32010)
+# 4. Optimisé pour sources Dremio : PostgreSQL, MinIO, OpenSearch
+# 5. Support création programmative de sources via PyDremio

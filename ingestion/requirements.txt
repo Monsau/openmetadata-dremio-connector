@@ -1,0 +1,12 @@
+# Dremio to OpenMetadata Ingestion - Core Dependencies
+# ===================================================
+# Version nettoyée avec uniquement les dépendances essentielles
+
+# HTTP requests pour les API Dremio et OpenMetadata
+requests>=2.31.0
+
+# Configuration et variables d'environnement
+python-dotenv>=1.0.0
+
+# Optionnel: traitement YAML si configuration nécessaire
+pyyaml>=6.0.0

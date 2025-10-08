@@ -1,0 +1,20 @@
+[
+  {
+    "source_id": 1,
+    "source_name": "postgres_business",
+    "source_type": "PostgreSQL",
+    "status": "active"
+  },
+  {
+    "source_id": 2,
+    "source_name": "minio_storage",
+    "source_type": "S3",
+    "status": "active"
+  },
+  {
+    "source_id": 3,
+    "source_name": "opensearch_analytics",
+    "source_type": "Elasticsearch",
+    "status": "active"
+  }
+]

@@ -1,0 +1,266 @@
+# =====================================================
+# DREMIO TO OPENMETADATA INGESTION CONFIGURATION
+# =====================================================
+# Version: 1.0.0
+# Compatible with: OpenMetadata 1.9.7+, Dremio 24.0+
+# Purpose: Ingestion des sources et VDS Dremio vers OpenMetadata comme CustomDB
+
+# =====================================================
+# METADATA & TEMPLATE INFORMATION
+# =====================================================
+template:
+  name: "dremio-openmetadata-ingestion"
+  version: "1.0.0"
+  description: "Ingestion des métadonnées Dremio vers OpenMetadata"
+  author: "Data Engineering Team"
+  created: "2025-10-01"
+  openmetadata_version: "1.9.7"
+  dremio_version: "24.0+"
+
+# =====================================================
+# DREMIO CONNECTION SETTINGS
+# =====================================================
+dremio:
+  # Connection details - Peut être surchargé par variables d'environnement
+  host: "localhost"
+  port: 9047
+  protocol: "http"
+  
+  # Authentication - Utiliser les variables d'environnement pour la sécurité
+  # DREMIO_USERNAME et DREMIO_PASSWORD dans votre .env
+  username: "admin"
+  password: "admin123"
+  
+  # API settings
+  api_version: "v3"
+  timeout: 30
+  retry_count: 3
+
+# =====================================================
+# OPENMETADATA CONNECTION SETTINGS
+# =====================================================
+openmetadata:
+  # Connection details
+  host: "localhost"
+  port: 8585
+  protocol: "http"
+  api_version: "v1"
+  
+  # Authentication - OBLIGATOIRE : définir OPENMETADATA_JWT_TOKEN dans .env
+  # Récupérer le token depuis OpenMetadata UI → Settings → Bots → ingestion-bot
+  jwt_token: ""  # Sera récupéré depuis la variable d'environnement
+  
+  # API settings
+  timeout: 30
+  retry_count: 3
+
+# =====================================================
+# SERVICE CONFIGURATION (CustomDB)
+# =====================================================
+service:
+  name: "dremio-custom-service"
+  display_name: "Dremio Data Lake Platform"
+  description: "Service personnalisé pour exposer les sources et VDS Dremio dans OpenMetadata"
+  service_type: "CustomDatabase"
+  
+  # Configuration de connexion pour OpenMetadata
+  connection_config:
+    type: "CustomDatabase"
+    source_python_class: "metadata.ingestion.source.database.customdatabase.source.CustomDatabaseSource"
+    connection_options:
+      dremio_host: "localhost"
+      dremio_port: "9047"
+
+# =====================================================
+# INGESTION CONFIGURATION
+# =====================================================
+ingestion:
+  # Paramètres généraux
+  batch_size: 50
+  timeout: 60
+  retry_count: 3
+  
+  # Filtres d'inclusion/exclusion pour les sources
+  sources:
+    include_patterns:
+      - ".*"  # Inclure toutes les sources par défaut
+    exclude_patterns:
+      - "tmp_.*"  # Exclure les sources temporaires
+      - "test_.*"  # Exclure les sources de test
+  
+  # Filtres pour les tables/datasets
+  tables:
+    include_patterns:
+      - ".*"
+    exclude_patterns:
+      - "tmp_.*"
+      - "backup_.*"
+      - "temp_.*"
+  
+  # Filtres pour les VDS
+  vds:
+    include_patterns:
+      - ".*"
+    exclude_patterns:
+      - "tmp_.*"
+      - "debug_.*"
+  
+  # Options d'ingestion
+  options:
+    include_views: true
+    include_tables: true
+    include_vds: true
+    include_sources: true
+    mark_deleted_tables: false
+    update_description: true
+    include_tags: true
+    
+  # Métadonnées à extraire
+  metadata:
+    include_column_descriptions: true
+    include_table_descriptions: true
+    include_source_descriptions: true
+    include_lineage: true
+    include_usage: false
+    include_profiling: false
+
+# =====================================================
+# PIPELINE CONFIGURATION
+# =====================================================
+pipeline:
+  name: "dremio-metadata-pipeline"
+  display_name: "Dremio Metadata Ingestion Pipeline"
+  description: "Pipeline d'ingestion automatique des métadonnées Dremio vers OpenMetadata"
+  
+  # Planification
+  schedule_interval: "@daily"  # Cron: "0 2 * * *" pour 2h du matin tous les jours
+  
+  # Configuration Airflow
+  airflow_config:
+    schedule_interval: "@daily"
+    max_active_runs: 1
+    catchup: false
+    depends_on_past: false
+    
+  # Types de métadonnées à inclure
+  source_config:
+    type: "DatabaseMetadata"
+    schema_filter_pattern:
+      includes: [".*"]
+      excludes: ["information_schema", "performance_schema"]
+    table_filter_pattern:
+      includes: [".*"]
+      excludes: ["tmp_.*", "temp_.*"]
+    
+  # Configuration du profilage (optionnel)
+  profiler_config:
+    enabled: false
+    sample_percentage: 10
+    profile_sample_rows: 1000
+
+# =====================================================
+# MAPPING CONFIGURATION
+# =====================================================
+mapping:
+  # Mapping des types Dremio vers OpenMetadata
+  data_types:
+    VARCHAR: "VARCHAR"
+    INTEGER: "INT"
+    BIGINT: "BIGINT"
+    DOUBLE: "DOUBLE"
+    FLOAT: "FLOAT"
+    BOOLEAN: "BOOLEAN"
+    DATE: "DATE"
+    TIMESTAMP: "TIMESTAMP"
+    TIME: "TIME"
+    DECIMAL: "DECIMAL"
+    BINARY: "BINARY"
+    VARBINARY: "VARBINARY"
+    LIST: "ARRAY"
+    STRUCT: "STRUCT"
+    MAP: "MAP"
+    UNION: "UNION"
+  
+  # Mapping des conteneurs Dremio
+  container_types:
+    SOURCE: "schema"
+    SPACE: "schema"
+    FOLDER: "schema"
+    HOME: "schema"
+  
+  # Mapping des types de datasets
+  dataset_types:
+    PHYSICAL_DATASET: "table"
+    VIRTUAL_DATASET: "view"
+    PROMOTED_DATASET: "table"
+
+# =====================================================
+# LOGGING CONFIGURATION
+# =====================================================
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "dremio_ingestion.log"
+  
+  # Loggers spécifiques
+  loggers:
+    dremio_client: "INFO"
+    openmetadata_client: "INFO"
+    ingestion_system: "INFO"
+    requests: "WARNING"  # Réduire les logs HTTP
+
+# =====================================================
+# PERFORMANCE & MONITORING
+# =====================================================
+performance:
+  # Parallélisation
+  max_workers: 4
+  batch_processing: true
+  
+  # Limites
+  max_tables_per_batch: 100
+  max_columns_per_table: 500
+  
+  # Timeouts
+  connection_timeout: 30
+  read_timeout: 60
+  
+  # Monitoring
+  enable_metrics: true
+  metrics_file: "ingestion_metrics.json"
+
+# =====================================================
+# ERROR HANDLING & RECOVERY
+# =====================================================
+error_handling:
+  # Stratégie de retry
+  retry_strategy:
+    max_retries: 3
+    backoff_factor: 2
+    retry_statuses: [500, 502, 503, 504]
+  
+  # Gestion des erreurs
+  continue_on_error: true
+  skip_failed_tables: true
+  log_failed_operations: true
+  
+  # Sauvegarde d'état
+  save_progress: true
+  progress_file: "ingestion_progress.json"
+
+# =====================================================
+# QUALITY & VALIDATION
+# =====================================================
+quality:
+  # Validation des données
+  validate_schema: true
+  validate_connections: true
+  
+  # Tests de qualité
+  run_tests: false
+  test_sample_size: 1000
+  
+  # Seuils de qualité
+  quality_thresholds:
+    min_success_rate: 0.95
+    max_error_rate: 0.05

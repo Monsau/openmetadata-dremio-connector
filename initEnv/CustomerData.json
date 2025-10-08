@@ -1,0 +1,37 @@
+[
+  {
+    "id": 1,
+    "name": "John Doe",
+    "email": "john@example.com",
+    "city": "New York",
+    "segment": "Premium"
+  },
+  {
+    "id": 2,
+    "name": "Jane Smith",
+    "email": "jane@example.com",
+    "city": "Paris",
+    "segment": "Standard"
+  },
+  {
+    "id": 3,
+    "name": "Bob Johnson",
+    "email": "bob@example.com",
+    "city": "London",
+    "segment": "Basic"
+  },
+  {
+    "id": 4,
+    "name": "Alice Brown",
+    "email": "alice@example.com",
+    "city": "Tokyo",
+    "segment": "Premium"
+  },
+  {
+    "id": 5,
+    "name": "Charlie Wilson",
+    "email": "charlie@example.com",
+    "city": "Berlin",
+    "segment": "Standard"
+  }
+]
