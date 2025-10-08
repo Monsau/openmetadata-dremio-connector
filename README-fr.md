@@ -1,4 +1,4 @@
-# 🇫🇷 Documentation Complète Française
+#  Documentation Complète Française
 
 Pour la documentation complète en français, consultez la section correspondante dans [`README.md`](./README.md#-dremio-vers-openmetadata--connecteur-dingestion-automatique).
 

@@ -1,21 +1,21 @@
 
 dremio/
 ├── � README.md                    # Ce que tu lis là
-├── 🐳 docker-compose-auto.yml     # Env Dremio + OpenMetadata
-├── 📊 ingestion/                  # Le cœur du connecteur
-│   ├── 🎯 example_usage.py        # Ton point d'entrée principal
-│   ├── ⚙️ dremio_to_openmetadata_ingestion.py  # Le moteur
-│   ├── 📦 requirements.txt        # Dépendances Python
-│   ├── 🔧 config/
+├──  docker-compose-auto.yml     # Env Dremio + OpenMetadata
+├──  ingestion/                  # Le cœur du connecteur
+│   ├──  example_usage.py        # Ton point d'entrée principal
+│   ├── ️ dremio_to_openmetadata_ingestion.py  # Le moteur
+│   ├──  requirements.txt        # Dépendances Python
+│   ├──  config/
 │   │   └── dremio_ingestion.yaml  # Config avancée
-│   └── 🛠️ src/
+│   └── ️ src/
 │       ├── client/
 │       │   ├── dremio_client.py   # API Dremio
 │       │   └── openmetadata_client.py  # API OpenMetadata
 │       └── utils/
 │           └── config_manager.py   # Gestion config
 ├── � initEnv/                    # Scripts d'init Dremio
-└── 📈 env/                        # Environnement Docker
+└──  env/                        # Environnement Docker
 
 # Dremio ↔ OpenMetadata Connector
 
@@ -71,7 +71,7 @@ For advanced configuration, troubleshooting, and architecture details, see the f
 
 ---
 
-## 🤝 Contributing & Support
+##  Contributing & Support
 
 We welcome contributions in all languages! For details, see the contribution guidelines in this file and the `docs/` directory.
 
@@ -79,4 +79,4 @@ For support, open a GitHub issue or see the support section in this file.
 
 ---
 
-**Built with ❤️ for the global data community**
+**Built with ️ for the global data community**
