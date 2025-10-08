@@ -44,14 +44,6 @@ dremio/
 │
 ├── scripts/                       # Utility scripts
 │
-├── env/                           # Docker environment (legacy)
-│
-├── ingestion/                     # Legacy ingestion code
-│
-├── initEnv/                       # Environment initialization scripts (legacy)
-│
-├── connectors/                    # Old connector code (to be deprecated)
-│
 ├── requirements.txt               # Python dependencies
 ├── setup.py                       # Package installation configuration
 ├── .gitignore                     # Git ignore rules

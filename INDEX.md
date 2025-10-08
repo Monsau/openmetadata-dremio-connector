@@ -15,10 +15,6 @@
 
 ### Project Structure & Architecture
 - **[docs/PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md)** - Detailed project structure and module descriptions
-- **[RESTRUCTURATION_SUMMARY.md](RESTRUCTURATION_SUMMARY.md)** - Summary of the restructuring with statistics
-
-### Migration & Upgrade
-- **[docs/MIGRATION_GUIDE.md](docs/MIGRATION_GUIDE.md)** - Guide for migrating from legacy structure
 
 ## 📖 Guides & Examples
 
@@ -57,11 +53,9 @@ dremio/
 ├── 📄 README.md                      # Main documentation (START HERE)
 ├── 📄 QUICK_START.md                 # Quick start guide
 ├── 📄 INDEX.md                       # This file - Documentation index
-├── 📄 RESTRUCTURATION_SUMMARY.md     # Restructuring summary
 │
 ├── 📚 docs/                          # Additional documentation
 │   ├── PROJECT_STRUCTURE.md          # Project structure details
-│   ├── MIGRATION_GUIDE.md            # Migration guide
 │   └── guides/                       # User guides
 │
 ├── 📦 src/dremio_connector/          # Main source code
@@ -95,9 +89,6 @@ dremio/
 
 **Understand the project structure**
 → Read [docs/PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md)
-
-**Migrate from old structure**
-→ Read [docs/MIGRATION_GUIDE.md](docs/MIGRATION_GUIDE.md)
 
 **See usage examples**
 → Check [examples/README.md](examples/README.md)

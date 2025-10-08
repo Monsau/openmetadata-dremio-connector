@@ -1,1 +1,0 @@
-# Dremio and OpenMetadata Client Package

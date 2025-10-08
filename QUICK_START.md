@@ -122,8 +122,6 @@ pytest tests/test_dremio_client.py -v
 |----------|-------------|
 | [README.md](README.md) | Documentation principale |
 | [PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md) | Structure détaillée |
-| [MIGRATION_GUIDE.md](docs/MIGRATION_GUIDE.md) | Guide de migration |
-| [RESTRUCTURATION_SUMMARY.md](RESTRUCTURATION_SUMMARY.md) | Résumé de la restructuration |
 | [examples/README.md](examples/README.md) | Guide des exemples |
 
 ## 🔍 Commandes Utiles

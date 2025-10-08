@@ -1,1 +1,0 @@
-# OpenMetadata connectors package

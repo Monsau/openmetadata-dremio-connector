@@ -346,8 +346,6 @@ dremio/
 | [README.md](README.md) | Main documentation (this file) |
 | [QUICK_START.md](QUICK_START.md) | Quick start visual guide |
 | [PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md) | Detailed project structure |
-| [MIGRATION_GUIDE.md](docs/MIGRATION_GUIDE.md) | Migration from legacy structure |
-| [RESTRUCTURATION_SUMMARY.md](RESTRUCTURATION_SUMMARY.md) | Restructuring summary |
 | [examples/README.md](examples/README.md) | Examples guide |
 
 ---
