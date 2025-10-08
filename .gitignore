@@ -1,60 +1,179 @@
-# Dremio Project - Git Ignore
+# Dremio OpenMetadata Connector# Dremio Project - Git Ignore
+
 # ============================
 
-# Configuration et secrets
-.env
+# Python
+
+*.pyc# Configuration et secrets
+
+__pycache__/.env
+
+*.py[cod]*.log
+
+*$py.class.env.local
+
+*.so.env.production
+
+.Python
+
+build/# Python
+
+develop-eggs/__pycache__/
+
+dist/*.py[cod]
+
+downloads/*$py.class
+
+eggs/*.so
+
+.eggs/.Python
+
+lib/build/
+
+lib64/develop-eggs/
+
+parts/dist/
+
+sdist/downloads/
+
+var/eggs/
+
+wheels/.eggs/
+
+*.egg-info/lib/
+
+.installed.cfglib64/
+
+*.eggparts/
+
+MANIFESTsdist/
+
+var/
+
+# Virtual environmentswheels/
+
+venv/*.egg-info/
+
+venv_*/.installed.cfg
+
+venv_dremio/*.egg
+
+venv_dremio_*/MANIFEST
+
+env/
+
+ENV/# Virtual Environment
+
+.venv/venv/
+
+venv_*/
+
+# IDEvenv_dremio_311/
+
+.vscode/env/
+
+.idea/ENV/
+
+*.swp
+
+*.swo# IDE
+
+*~.vscode/
+
+.project.idea/
+
+.pydevproject*.swp
+
+.settings/*.swo
+
+*.sublime-project.project
+
+*.sublime-workspace.settings/
+
+
+
+# Testing# OS
+
+.pytest_cache/.DS_Store
+
+.coverageThumbs.db
+
+.coverage.*desktop.ini
+
+htmlcov/
+
+*.cover# Docker volumes et données
+
+.hypothesis/docker-volume/db-data/
+
+.tox/**/db-data/
+
+nosetests.xmlenv/data/
+
+coverage.xmlenv/logs/
+
+*.mo
+
+*.pot# Temporary files
+
+tmp/
+
+# Distributiontemp/
+
+dist/*.tmp
+
+build/*.bak
+
+*.egg-info/*.backup
+
+*.egg
+
+*.whl# Logs
+
 *.log
-.env.local
+
+# Environment fileslogs/
+
+.envdremio_ingestion.log
+
+.env.localingestion_output.log
+
 .env.production
 
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
+.env.*.local# Test outputs
 
-# Virtual Environment
-venv/
-venv_*/
-venv_dremio_311/
-env/
-ENV/
+*.envtest_results/
 
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-.project
-.settings/
+coverage/
+# Logs
+*.log
+logs/
+*.log.*
+dremio_ingestion.log
+ingestion_output.log
 
 # OS
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
 desktop.ini
 
-# Docker volumes et données
-docker-volume/db-data/
-**/db-data/
+# Dremio specific
+dremio-conf/
 env/data/
+env/dremio-conf/
 env/logs/
+
+# OpenMetadata
+openmetadata*/
+
+# Docker
+docker-volume/
+**/db-data/
 
 # Temporary files
 tmp/
@@ -62,13 +181,25 @@ temp/
 *.tmp
 *.bak
 *.backup
+*.swp
+*~.nib
 
-# Logs
-*.log
-logs/
-dremio_ingestion.log
-ingestion_output.log
+# Documentation build
+docs/_build/
+docs/.doctrees/
 
-# Test outputs
-test_results/
-coverage/
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# Legacy folders (deprecated)
+initEnv/
+connectors/dremio/
+ingestion/src/
