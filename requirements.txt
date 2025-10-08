@@ -1,112 +1,79 @@
-# Requirements pour le projet Dremio - Configuration complète
-# ================================================================
-# Installation avec environnement virtuel recommandé :
-#   python -m venv venv_dremio
-#   venv_dremio\Scripts\activate (Windows)
-#   pip install -r requirements.txt
+# Dremio OpenMetadata Connector - Requirements
+# =============================================
+# Installation: pip install -r requirements.txt
+# Python 3.8+ required
 
 # ============================================================================
-# CORE DEPENDENCIES - API et HTTP  
+# CORE DEPENDENCIES
 # ============================================================================
 
-# HTTP client pour API Dremio et OpenMetadata
-requests==2.32.3
+# HTTP client for API calls
+requests>=2.32.0
 
-# Environment variables
-python-dotenv==1.0.1
+# Environment variables management
+python-dotenv>=1.0.0
 
-# URL utilities et sécurité
+# Configuration file parsing
+PyYAML>=6.0.1
+
+# URL and security utilities
 urllib3>=2.0.0
-certifi==2025.1.31
+certifi>=2025.1.0
 
-# JSON processing et validation
+# JSON validation
 jsonschema>=4.19.0
 
-# ============================================================================
-# PYDREMIO - API ARROW FLIGHT POUR DREMIO (Nécessite Python 3.12+)
-# ============================================================================
-
-# PyDremio client pour Arrow Flight API (commenté - incompatible Python 3.11)
-# pydremio==0.4.0
-
-# Apache Arrow (version compatible Python 3.11)
-pyarrow>=14.0.0
-
-# Typing extensions
+# Type hints
 typing-extensions>=4.7.0
 
 # ============================================================================
-# DATA PROCESSING ET ANALYTICS
+# DATA PROCESSING
 # ============================================================================
 
-# Pandas pour manipulation de données
-pandas==2.2.3
+# Apache Arrow for data handling
+pyarrow>=14.0.0
 
-# Polars pour performance (alternative à Pandas) 
-polars==1.23.0
+# Data manipulation
+pandas>=2.2.0
 
-# Table formatting pour affichage
-prettytable==3.14.0
+# Table formatting
+prettytable>=3.14.0
 
 # Date/time utilities
 python-dateutil>=2.8.2
 
 # ============================================================================
-# DATABASE CONNECTORS
+# OPTIONAL DEPENDENCIES
 # ============================================================================
 
-# PostgreSQL connector (pour tests directs et Dremio JDBC)
-psycopg2-binary>=2.9.7
+# Database connectors (optional)
+# psycopg2-binary>=2.9.7
 
-# OpenSearch/Elasticsearch connector
-opensearch-py>=2.4.0
-elasticsearch>=8.10.0
+# Search engines (optional)
+# opensearch-py>=2.4.0
+# elasticsearch>=8.10.0
 
-# ============================================================================
-# CONFIGURATION ET PARSING
-# ============================================================================
+# Enhanced logging (optional)
+# colorlog>=6.7.0
 
-# YAML parser pour fichiers de configuration
-PyYAML>=6.0.1
-
-# Charset detection
-charset-normalizer>=3.2.0
+# Data processing alternative (optional)
+# polars>=1.23.0
 
 # ============================================================================
-# LOGGING ET MONITORING
+# DEVELOPMENT DEPENDENCIES (for development only)
 # ============================================================================
 
-# Enhanced logging avec couleurs
-colorlog>=6.7.0
-
-# Structured logging  
-structlog>=23.1.0
-
-# ============================================================================
-# DEVELOPMENT ET TESTING (optionnel - décommentez si nécessaire)
-# ============================================================================
-
-# Testing framework
-pytest>=7.4.0
-pytest-cov>=4.1.0
-
-# Code quality
+# Uncomment for development:
+# pytest>=7.4.0
+# pytest-cov>=4.1.0
 # black>=23.7.0
 # flake8>=6.0.0
 # mypy>=1.5.0
 
 # ============================================================================
-# OPENMETADATA INGESTION (optionnel - très lourd, commenté par défaut)
+# NOTES
 # ============================================================================
-
-# Framework OpenMetadata complet (décommentez si nécessaire)
-# openmetadata-ingestion[postgres,opensearch]==1.9.7
-
-# ============================================================================
-# NOTES D'INSTALLATION ET USAGE
-# ============================================================================
-# 1. Environnement virtuel FORTEMENT recommandé
-# 2. Compatible Python 3.8+ (testé 3.13)
-# 3. PyDremio nécessite Arrow Flight actif sur Dremio (port 32010)
-# 4. Optimisé pour sources Dremio : PostgreSQL, MinIO, OpenSearch
-# 5. Support création programmative de sources via PyDremio
+# - Use virtual environment: python -m venv venv_dremio
+# - Install dev dependencies: pip install -e ".[dev]"
+# - For database support: pip install -e ".[database]"
+# - For search support: pip install -e ".[search]"
