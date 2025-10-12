@@ -11,14 +11,15 @@ Modules:
 """
 
 __version__ = "1.0.0"
-__author__ = "Dremio OpenMetadata Team"
+__author__ = "Dremio OpenMetadataTeam"
 
-from src.dremio_connector.core.dremio_source import DremioSource
-from src.dremio_connector.clients.dremio_client import DremioClient
-from src.dremio_connector.clients.openmetadata_client import OpenMetadataClient
+from dremio_connector.core.sync_engine import DremioOpenMetadataSync, sync_dremio_to_openmetadata
+from dremio_connector.clients.dremio_client import DremioClient
+from dremio_connector.clients.openmetadata_client import OpenMetadataClient
 
 __all__ = [
-    "DremioSource",
+    "DremioOpenMetadataSync",
+    "sync_dremio_to_openmetadata",
     "DremioClient", 
     "OpenMetadataClient",
 ]

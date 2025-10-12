@@ -1,6 +1,15 @@
 """Core module for Dremio connector functionality."""
 
-from src.dremio_connector.core.dremio_source import DremioSource
-from src.dremio_connector.core.connector import DremioConnector
+from dremio_connector.core.sync_engine import (
+    DremioOpenMetadataSync,
+    DremioAutoDiscovery,
+    OpenMetadataSyncEngine,
+    sync_dremio_to_openmetadata
+)
 
-__all__ = ["DremioSource", "DremioConnector"]
+__all__ = [
+    "DremioOpenMetadataSync",
+    "DremioAutoDiscovery",
+    "OpenMetadataSyncEngine",
+    "sync_dremio_to_openmetadata"
+]

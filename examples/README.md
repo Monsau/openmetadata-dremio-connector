@@ -1,66 +1,129 @@
-# Examples
+# 📖 Examples - Dremio OpenMetadata Connector# Examples
 
-This directory contains example scripts showing how to use the Dremio connector in different scenarios.
 
-## Available Examples
 
-### `basic_ingestion.py`
+Examples pratiques démontrant l'utilisation du connecteur.This directory contains example scripts showing how to use the Dremio connector in different scenarios.
+
+
+
+## 📂 Exemples Disponibles## Available Examples
+
+
+
+### ⭐ `full_sync_example.py` - Synchronisation Complète### `basic_ingestion.py`
+
+Synchronisation automatique complète de Dremio vers OpenMetadata.
 
 Basic example showing how to use the connector programmatically.
 
 **Usage**:
-```bash
-python examples/basic_ingestion.py
+
+```bash**Usage**:
+
+python examples/full_sync_example.py```bash
+
+```python examples/basic_ingestion.py
+
 ```
+
+**Résultat Attendu**: 36 ressources découvertes, 9 DBs, 15 schemas, 20 tables
 
 **What it does**:
-- Initializes DremioSource with configuration
-- Tests connections to Dremio and OpenMetadata
+
+### 🔧 `create_service.py` - Création du Service- Initializes DremioSource with configuration
+
+Crée le service Dremio dans OpenMetadata (à faire une fois).- Tests connections to Dremio and OpenMetadata
+
 - Runs metadata ingestion
-- Displays results
 
-**Configuration**:
-Edit the `config` dictionary in the script with your:
+**Usage**:- Displays results
+
+```bash
+
+python examples/create_service.py**Configuration**:
+
+```Edit the `config` dictionary in the script with your:
+
 - Dremio connection details
-- OpenMetadata server URL and JWT token
-- Service name and ingestion options
 
-## Creating Your Own Examples
+### 📝 `basic_ingestion.py` - Exemple Simple- OpenMetadata server URL and JWT token
 
-### Template
+Exemple minimaliste pour apprendre l'API.- Service name and ingestion options
+
+
+
+**Code**:## Creating Your Own Examples
 
 ```python
-from src.dremio_connector.core.dremio_source import DremioSource
-from src.dremio_connector.utils.logger import setup_logger
 
-# Setup logging
-logger = setup_logger(name='my_example', level='INFO')
+from dremio_connector import sync_dremio_to_openmetadata### Template
 
-# Configuration
-config = {
+
+
+stats = sync_dremio_to_openmetadata(```python
+
+    dremio_url="http://localhost:9047",from src.dremio_connector.core.dremio_source import DremioSource
+
+    dremio_user="admin",from src.dremio_connector.utils.logger import setup_logger
+
+    dremio_password="admin123",
+
+    openmetadata_url="http://localhost:8585/api",# Setup logging
+
+    jwt_token="your-token",logger = setup_logger(name='my_example', level='INFO')
+
+    service_name="dremio_service"
+
+)# Configuration
+
+```config = {
+
     'dremioHost': 'localhost',
-    'dremioPort': 9047,
+
+## 🎓 Patterns d'Utilisation    'dremioPort': 9047,
+
     'dremioUsername': 'admin',
-    'dremioPassword': 'admin123',
-    'openMetadataServerConfig': {
-        'hostPort': 'http://localhost:8585/api',
-        'securityConfig': {'jwtToken': 'your-token'}
-    },
+
+### Sync Manuel (Une fois)    'dremioPassword': 'admin123',
+
+```bash    'openMetadataServerConfig': {
+
+python examples/create_service.py        'hostPort': 'http://localhost:8585/api',
+
+python examples/full_sync_example.py        'securityConfig': {'jwtToken': 'your-token'}
+
+```    },
+
     'serviceName': 'my-service',
-    'include_sources': True,
-    'include_vds': True,
-}
 
-# Initialize and run
+### Sync Automatique (Quotidien)    'include_sources': True,
+
+```bash    'include_vds': True,
+
+# Windows Task Scheduler ou Linux Cron}
+
+0 2 * * * /path/to/python /path/to/examples/full_sync_example.py
+
+```# Initialize and run
+
 connector = DremioSource(config)
-if connector.test_connection():
+
+## 📚 Documentationif connector.test_connection():
+
     results = connector.ingest_metadata()
-    logger.info(f"Results: {results}")
-```
 
-### Using Configuration Files
+- [Quick Start](../docs/QUICK_START.md) - Guide pas à pas    logger.info(f"Results: {results}")
 
-```python
+- [README Principal](../README.md) - Documentation complète```
+
+
+
+---### Using Configuration Files
+
+
+
+**Besoin d'aide?** Consultez le [README](../README.md#-troubleshooting)```python
+
 from src.dremio_connector.utils.config import load_config
 from src.dremio_connector.core.dremio_source import DremioSource
 
