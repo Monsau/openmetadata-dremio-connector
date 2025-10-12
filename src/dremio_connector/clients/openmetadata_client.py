@@ -16,12 +16,26 @@ logger = logging.getLogger(__name__)
 class OpenMetadataClient:
 	"""Client OpenMetadata - Compatible avec API v1 (OpenMetadata 1.9.7+)"""
     
-	def __init__(self, base_url: str, jwt_token: str):
-		self.base_url = base_url.rstrip('/')
-		self.jwt_token = jwt_token
+	def __init__(self, config: Dict[str, Any]):
+		"""
+		Initialise le client OpenMetadata.
+		
+		Args:
+			config: Configuration OpenMetadata
+				- api_url: URL API OpenMetadata
+				- token: JWT token
+				- service_name: Nom du service (optionnel)
+		"""
+		if isinstance(config, str):
+			# Compatibilité ancienne signature
+			raise ValueError("Utiliser config dict au lieu de paramètres individuels")
+		
+		self.base_url = config.get('api_url', 'http://localhost:8585/api').rstrip('/')
+		self.jwt_token = config.get('token')
+		self.service_name = config.get('service_name')
 		self.session = requests.Session()
 		self.session.headers.update({
-			'Authorization': f'Bearer {jwt_token}',
+			'Authorization': f'Bearer {self.jwt_token}',
 			'Content-Type': 'application/json',
 			'Accept': 'application/json',
 			'X-OM-Version': '1.9.7'  # Spécifier la version pour compatibilité

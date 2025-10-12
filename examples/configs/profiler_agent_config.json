@@ -1,0 +1,16 @@
+{
+  "agent_type": "profiler",
+  "dremio": {
+    "url": "http://localhost:9047",
+    "username": "admin",
+    "password": "admin123"
+  },
+  "tables": [],
+  "sample_size": 10000,
+  "openmetadata": {
+    "api_url": "http://localhost:8585/api",
+    "token": "YOUR_JWT_TOKEN_HERE",
+    "service_name": "dremio_service"
+  },
+  "schedule": "0 3 * * 0"
+}

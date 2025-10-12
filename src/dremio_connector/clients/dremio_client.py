@@ -15,12 +15,31 @@ logger = logging.getLogger(__name__)
 class DremioClient:
 	"""Client Dremio pour récupérer sources et VDS"""
     
-	def __init__(self, host: str, port: int, username: str, password: str):
-		self.host = host
-		self.port = port
-		self.username = username
-		self.password = password
-		self.base_url = f"http://{host}:{port}"
+	def __init__(self, config: Dict[str, Any]):
+		"""
+		Initialise le client Dremio.
+		
+		Args:
+			config: Configuration Dremio
+				- url: URL Dremio (ex: http://localhost:9047)
+				- username: Nom utilisateur
+				- password: Mot de passe
+				- port: Port (optionnel, extrait de l'URL)
+		"""
+		if isinstance(config, str):
+			# Compatibilité ancienne signature (host)
+			raise ValueError("Utiliser config dict au lieu de paramètres individuels")
+		
+		self.url = config.get('url', 'http://localhost:9047')
+		self.username = config.get('username')
+		self.password = config.get('password')
+		
+		# Extraire host et port de l'URL
+		from urllib.parse import urlparse
+		parsed = urlparse(self.url)
+		self.host = parsed.hostname or 'localhost'
+		self.port = parsed.port or 9047
+		self.base_url = self.url
 		self.session = requests.Session()
 		self.token = None
         

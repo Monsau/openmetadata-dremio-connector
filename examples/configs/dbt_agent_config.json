@@ -1,0 +1,10 @@
+{
+  "agent_type": "dbt",
+  "manifest_path": "c:/projets/dremiodbt/dbt/target/manifest.json",
+  "openmetadata": {
+    "api_url": "http://localhost:8585/api",
+    "token": "YOUR_JWT_TOKEN_HERE",
+    "service_name": "dremio_dbt_service"
+  },
+  "schedule": "0 2 * * *"
+}

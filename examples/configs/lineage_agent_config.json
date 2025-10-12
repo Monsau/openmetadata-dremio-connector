@@ -1,0 +1,10 @@
+{
+  "agent_type": "lineage",
+  "service_name": "dremio_service",
+  "output_dir": "reports",
+  "openmetadata": {
+    "api_url": "http://localhost:8585/api",
+    "token": "YOUR_JWT_TOKEN_HERE"
+  },
+  "schedule": "0 4 * * *"
+}
