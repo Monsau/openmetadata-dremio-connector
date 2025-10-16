@@ -1,0 +1,266 @@
+{
+  "name": "Dremio Connector",
+  "version": "1.0.0",
+  "description": "Custom Dremio connector with multi-agent support for OpenMetadata",
+  "author": "Dremio Team",
+  "sourceClass": "dremio_connector.dremio_source.DremioConnector",
+  "serviceType": "CustomDatabase",
+  "agents": [
+    {
+      "name": "DbtAgent",
+      "type": "dbt",
+      "class": "dremio_connector.agents.dbt_agent.DbtAgent",
+      "description": "Ingestion dbt models with automatic lineage",
+      "configSchema": {
+        "type": "object",
+        "required": ["manifest_path", "openmetadata"],
+        "properties": {
+          "manifest_path": {
+            "type": "string",
+            "title": "DBT Manifest Path",
+            "description": "Path to dbt manifest.json file",
+            "default": "/dbt/target/manifest.json"
+          },
+          "openmetadata": {
+            "type": "object",
+            "title": "OpenMetadata Configuration",
+            "required": ["api_url", "token", "service_name"],
+            "properties": {
+              "api_url": {
+                "type": "string",
+                "title": "API URL",
+                "description": "OpenMetadata API URL",
+                "default": "http://localhost:8585/api"
+              },
+              "token": {
+                "type": "string",
+                "title": "JWT Token",
+                "description": "OpenMetadata JWT authentication token",
+                "format": "password"
+              },
+              "service_name": {
+                "type": "string",
+                "title": "Service Name",
+                "description": "Name of the Dremio service in OpenMetadata",
+                "default": "dremio-with-official-connector"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "MetadataAgent",
+      "type": "metadata",
+      "class": "dremio_connector.agents.metadata_agent.MetadataAgent",
+      "description": "Synchronize Dremio native metadata",
+      "configSchema": {
+        "type": "object",
+        "required": ["dremio", "openmetadata"],
+        "properties": {
+          "dremio": {
+            "type": "object",
+            "title": "Dremio Configuration",
+            "required": ["url", "username", "password"],
+            "properties": {
+              "url": {
+                "type": "string",
+                "title": "Dremio URL",
+                "description": "Dremio instance URL",
+                "default": "http://host.docker.internal:9047"
+              },
+              "username": {
+                "type": "string",
+                "title": "Username",
+                "description": "Dremio username",
+                "default": "admin"
+              },
+              "password": {
+                "type": "string",
+                "title": "Password",
+                "description": "Dremio password",
+                "format": "password"
+              }
+            }
+          },
+          "openmetadata": {
+            "type": "object",
+            "title": "OpenMetadata Configuration",
+            "required": ["api_url", "token", "service_name"],
+            "properties": {
+              "api_url": {
+                "type": "string",
+                "title": "API URL",
+                "description": "OpenMetadata API URL",
+                "default": "http://localhost:8585/api"
+              },
+              "token": {
+                "type": "string",
+                "title": "JWT Token",
+                "description": "OpenMetadata JWT authentication token",
+                "format": "password"
+              },
+              "service_name": {
+                "type": "string",
+                "title": "Service Name",
+                "description": "Name of the Dremio service in OpenMetadata",
+                "default": "dremio-with-official-connector"
+              }
+            }
+          },
+          "mode": {
+            "type": "string",
+            "title": "Sync Mode",
+            "description": "Synchronization mode",
+            "enum": ["full", "incremental"],
+            "default": "incremental"
+          }
+        }
+      }
+    },
+    {
+      "name": "LineageAgent",
+      "type": "lineage",
+      "class": "dremio_connector.agents.lineage_agent.LineageAgent",
+      "description": "Validate and visualize data lineage",
+      "configSchema": {
+        "type": "object",
+        "required": ["openmetadata"],
+        "properties": {
+          "openmetadata": {
+            "type": "object",
+            "title": "OpenMetadata Configuration",
+            "required": ["api_url", "token", "service_name"],
+            "properties": {
+              "api_url": {
+                "type": "string",
+                "title": "API URL",
+                "description": "OpenMetadata API URL",
+                "default": "http://localhost:8585/api"
+              },
+              "token": {
+                "type": "string",
+                "title": "JWT Token",
+                "description": "OpenMetadata JWT authentication token",
+                "format": "password"
+              },
+              "service_name": {
+                "type": "string",
+                "title": "Service Name",
+                "description": "Name of the Dremio service in OpenMetadata",
+                "default": "dremio-with-official-connector"
+              }
+            }
+          },
+          "validation_mode": {
+            "type": "string",
+            "title": "Validation Mode",
+            "description": "Lineage validation strictness",
+            "enum": ["strict", "permissive"],
+            "default": "strict"
+          },
+          "report_path": {
+            "type": "string",
+            "title": "Report Path",
+            "description": "Path to save lineage reports",
+            "default": "/tmp/lineage_reports"
+          }
+        }
+      }
+    },
+    {
+      "name": "ProfilerAgent",
+      "type": "profiler",
+      "class": "dremio_connector.agents.profiler_agent.ProfilerAgent",
+      "description": "Data profiling and quality analysis",
+      "configSchema": {
+        "type": "object",
+        "required": ["dremio", "openmetadata"],
+        "properties": {
+          "dremio": {
+            "type": "object",
+            "title": "Dremio Configuration",
+            "required": ["url", "username", "password"],
+            "properties": {
+              "url": {
+                "type": "string",
+                "title": "Dremio URL",
+                "description": "Dremio instance URL",
+                "default": "http://host.docker.internal:9047"
+              },
+              "username": {
+                "type": "string",
+                "title": "Username",
+                "description": "Dremio username",
+                "default": "admin"
+              },
+              "password": {
+                "type": "string",
+                "title": "Password",
+                "description": "Dremio password",
+                "format": "password"
+              }
+            }
+          },
+          "openmetadata": {
+            "type": "object",
+            "title": "OpenMetadata Configuration",
+            "required": ["api_url", "token", "service_name"],
+            "properties": {
+              "api_url": {
+                "type": "string",
+                "title": "API URL",
+                "description": "OpenMetadata API URL",
+                "default": "http://localhost:8585/api"
+              },
+              "token": {
+                "type": "string",
+                "title": "JWT Token",
+                "description": "OpenMetadata JWT authentication token",
+                "format": "password"
+              },
+              "service_name": {
+                "type": "string",
+                "title": "Service Name",
+                "description": "Name of the Dremio service in OpenMetadata",
+                "default": "dremio-with-official-connector"
+              }
+            }
+          },
+          "sampling_rate": {
+            "type": "number",
+            "title": "Sampling Rate",
+            "description": "Data sampling rate (0.0 to 1.0)",
+            "minimum": 0.0,
+            "maximum": 1.0,
+            "default": 0.1
+          },
+          "profiling_options": {
+            "type": "object",
+            "title": "Profiling Options",
+            "properties": {
+              "include_nulls": {
+                "type": "boolean",
+                "title": "Include Nulls",
+                "description": "Analyze null values",
+                "default": true
+              },
+              "include_duplicates": {
+                "type": "boolean",
+                "title": "Include Duplicates",
+                "description": "Analyze duplicate values",
+                "default": true
+              },
+              "include_distributions": {
+                "type": "boolean",
+                "title": "Include Distributions",
+                "description": "Analyze value distributions",
+                "default": true
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

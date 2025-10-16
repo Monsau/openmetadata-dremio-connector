@@ -23,8 +23,8 @@ setup(
         "Documentation": "https://github.com/yourusername/dremio-connector/wiki",
         "Source Code": "https://github.com/yourusername/dremio-connector",
     },
-    packages=find_packages(where="src"),
-    package_dir={"": "src"},
+    packages=find_packages(),
+    # package_dir supprimé car le code est à la racine
     classifiers=[
         "Development Status :: 4 - Beta",
         "Intended Audience :: Developers",

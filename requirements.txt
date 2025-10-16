@@ -1,79 +1,87 @@
-# Dremio OpenMetadata Connector - Requirements
-# =============================================
-# Installation: pip install -r requirements.txt
-# Python 3.8+ required
+# Dépendances pour le module d'ingestion OpenMetadata Dremio
+# Installation avec venv: 
+#   python -m venv venv
+#   venv\Scripts\activate (Windows) ou source venv/bin/activate (Linux/Mac)
+#   pip install -r requirements.txt
 
 # ============================================================================
-# CORE DEPENDENCIES
+# CORE DEPENDENCIES - API et HTTP
 # ============================================================================
 
-# HTTP client for API calls
-requests>=2.32.0
+# HTTP client pour API calls OpenMetadata
+requests>=2.31.0
 
-# Environment variables management
-python-dotenv>=1.0.0
-
-# Configuration file parsing
+# YAML parser pour fichiers de configuration d'ingestion
 PyYAML>=6.0.1
 
-# URL and security utilities
+# URL utilities (dépendance de requests, version compatible)
 urllib3>=2.0.0
-certifi>=2025.1.0
 
-# JSON validation
+# JSON schema validation (pour validation des configs OpenMetadata)
 jsonschema>=4.19.0
 
-# Type hints
-typing-extensions>=4.7.0
+# ============================================================================
+# DATABASE CONNECTORS
+# ============================================================================
+
+# PostgreSQL connector (pour Dremio via JDBC PostgreSQL)
+psycopg2-binary>=2.9.7
+
+# OpenSearch connector (pour ingestion directe)
+opensearch-py>=2.4.0
 
 # ============================================================================
 # DATA PROCESSING
 # ============================================================================
 
-# Apache Arrow for data handling
-pyarrow>=14.0.0
-
-# Data manipulation
-pandas>=2.2.0
-
-# Table formatting
-prettytable>=3.14.0
-
 # Date/time utilities
 python-dateutil>=2.8.2
 
-# ============================================================================
-# OPTIONAL DEPENDENCIES
-# ============================================================================
+# Typing extensions pour compatibilité Python
+typing-extensions>=4.7.0
 
-# Database connectors (optional)
-# psycopg2-binary>=2.9.7
+# Charset detection (améliore requests)
+charset-normalizer>=3.2.0
 
-# Search engines (optional)
-# opensearch-py>=2.4.0
-# elasticsearch>=8.10.0
-
-# Enhanced logging (optional)
-# colorlog>=6.7.0
-
-# Data processing alternative (optional)
-# polars>=1.23.0
+# Certificate management
+certifi>=2023.7.22
 
 # ============================================================================
-# DEVELOPMENT DEPENDENCIES (for development only)
+# LOGGING ET MONITORING  
 # ============================================================================
 
-# Uncomment for development:
+# Enhanced logging avec couleurs
+colorlog>=6.7.0
+
+# Structured logging
+structlog>=23.1.0
+
+# ============================================================================
+# OPTIONNEL - OPENMETADATA INGESTION (si besoin framework complet)
+# ============================================================================
+
+# OpenMetadata Ingestion Framework (commenté par défaut - très lourd)
+# openmetadata-ingestion[postgres,opensearch]==1.9.7
+
+# ============================================================================
+# DEVELOPMENT (optionnel - décommentez si besoin)
+# ============================================================================
+
+# Testing framework
 # pytest>=7.4.0
 # pytest-cov>=4.1.0
+
+# Code formatting
 # black>=23.7.0
 # flake8>=6.0.0
+
+# Type checking  
 # mypy>=1.5.0
 
 # ============================================================================
-# NOTES
+# NOTES D'INSTALLATION
 # ============================================================================
-# - Use virtual environment: python -m venv venv_dremio
-# - Install dev dependencies: pip install -e ".[dev]"
-# - For database support: pip install -e ".[database]"
-# - For search support: pip install -e ".[search]"
+# 1. Ce fichier est optimisé pour un module léger d'ingestion
+# 2. Évite les dépendances lourdes comme Airflow sauf si nécessaire  
+# 3. Compatible Python 3.8+
+# 4. Testé avec OpenMetadata 1.2+ et 1.3+
