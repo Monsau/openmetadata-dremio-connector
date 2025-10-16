@@ -1,4 +1,5 @@
-# 🚀 Dremio Connector pour OpenMetadata# 🚀 Dremio Connector pour OpenMetadata# 🚀 Dremio Connector pour OpenMetadata# 🚀 Dremio Connector pour OpenMetadata# Dremio Connector pour OpenMetadata# 🚀 DREMIO + OPENMETADATA - INTÉGRATION COMPLÈTE
+# 🚀 Dremio Connector pour OpenMetadata#
+🚀 DREMIO + OPENMETADATA - INTÉGRATION COMPLÈTE
 
 
 
