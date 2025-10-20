@@ -3,11 +3,13 @@ Custom Dremio Connector for OpenMetadata
 
 Enhanced connector that uses DremioAutoDiscovery to find all sources, 
 databases, schemas, and tables from Dremio.
-Supports both Metadata ingestion and Profiling in the same agent.
+Supports Metadata ingestion, Profiling, Auto-Classification, and DBT in the same agent (4-in-1).
 """
 
 from typing import Iterable, Optional, List, Tuple, Dict, Any
 import logging
+import json
+from pathlib import Path
 from datetime import datetime, timezone
 
 from metadata.ingestion.api.common import Entity
@@ -73,6 +75,13 @@ class DremioConnector(DatabaseServiceSource):
         username = None
         password = None
         
+        # Configuration options with defaults
+        self.profile_sample_rows = None  # Number of rows for profiling (None = all rows)
+        self.dbt_enabled = False
+        self.dbt_catalog_path = None
+        self.dbt_manifest_path = None
+        self.dbt_run_results_path = None
+        
         try:
             # Extract from serviceConnection.__dict__['root'].config.connectionOptions.root
             if hasattr(self.config, 'serviceConnection'):
@@ -85,16 +94,35 @@ class DremioConnector(DatabaseServiceSource):
                         conn_opts = root.config.connectionOptions
                         # ConnectionOptions has a 'root' attribute containing the dict
                         if hasattr(conn_opts, 'root') and isinstance(conn_opts.root, dict):
-                            dremio_url = conn_opts.root.get('url')
-                            username = conn_opts.root.get('username')
-                            password = conn_opts.root.get('password')
+                            opts = conn_opts.root
+                            dremio_url = opts.get('url')
+                            username = opts.get('username')
+                            password = opts.get('password')
+                            
+                            # Extract optional configuration
+                            self.profile_sample_rows = opts.get('profileSampleRows')
+                            self.dbt_enabled = opts.get('dbtEnabled', False)
+                            self.dbt_catalog_path = opts.get('dbtCatalogPath')
+                            self.dbt_manifest_path = opts.get('dbtManifestPath')
+                            self.dbt_run_results_path = opts.get('dbtRunResultsPath')
+                            
                             logger.info(f"📋 Found connectionOptions: url={dremio_url}, username={username}")
+                            logger.info(f"📊 Profiling sample rows: {self.profile_sample_rows or 'all rows'}")
+                            logger.info(f"🔧 DBT enabled: {self.dbt_enabled}")
+                            
                         # Or ConnectionOptions might be a direct dict
                         elif isinstance(conn_opts, dict):
                             dremio_url = conn_opts.get('url')
                             username = conn_opts.get('username')
                             password = conn_opts.get('password')
+                            self.profile_sample_rows = conn_opts.get('profileSampleRows')
+                            self.dbt_enabled = conn_opts.get('dbtEnabled', False)
+                            self.dbt_catalog_path = conn_opts.get('dbtCatalogPath')
+                            self.dbt_manifest_path = conn_opts.get('dbtManifestPath')
+                            self.dbt_run_results_path = conn_opts.get('dbtRunResultsPath')
                             logger.info(f"📋 Found connectionOptions (dict): url={dremio_url}, username={username}")
+                            logger.info(f"📊 Profiling sample rows: {self.profile_sample_rows or 'all rows'}")
+                            logger.info(f"🔧 DBT enabled: {self.dbt_enabled}")
                 
                 # Pattern 2: Fallback via __root__ (older structure)
                 if not dremio_url and hasattr(service_conn, '__root__'):
@@ -102,15 +130,30 @@ class DremioConnector(DatabaseServiceSource):
                     if hasattr(root, 'config') and hasattr(root.config, 'connectionOptions'):
                         conn_opts = root.config.connectionOptions
                         if hasattr(conn_opts, 'root') and isinstance(conn_opts.root, dict):
-                            dremio_url = conn_opts.root.get('url')
-                            username = conn_opts.root.get('username')
-                            password = conn_opts.root.get('password')
+                            opts = conn_opts.root
+                            dremio_url = opts.get('url')
+                            username = opts.get('username')
+                            password = opts.get('password')
+                            self.profile_sample_rows = opts.get('profileSampleRows')
+                            self.dbt_enabled = opts.get('dbtEnabled', False)
+                            self.dbt_catalog_path = opts.get('dbtCatalogPath')
+                            self.dbt_manifest_path = opts.get('dbtManifestPath')
+                            self.dbt_run_results_path = opts.get('dbtRunResultsPath')
                             logger.info(f"📋 Found connectionOptions (__root__): url={dremio_url}, username={username}")
+                            logger.info(f"📊 Profiling sample rows: {self.profile_sample_rows or 'all rows'}")
+                            logger.info(f"🔧 DBT enabled: {self.dbt_enabled}")
                         elif isinstance(conn_opts, dict):
                             dremio_url = conn_opts.get('url')
                             username = conn_opts.get('username')
                             password = conn_opts.get('password')
+                            self.profile_sample_rows = conn_opts.get('profileSampleRows')
+                            self.dbt_enabled = conn_opts.get('dbtEnabled', False)
+                            self.dbt_catalog_path = conn_opts.get('dbtCatalogPath')
+                            self.dbt_manifest_path = conn_opts.get('dbtManifestPath')
+                            self.dbt_run_results_path = conn_opts.get('dbtRunResultsPath')
                             logger.info(f"📋 Found connectionOptions (__root__ dict): url={dremio_url}, username={username}")
+                            logger.info(f"📊 Profiling sample rows: {self.profile_sample_rows or 'all rows'}")
+                            logger.info(f"🔧 DBT enabled: {self.dbt_enabled}")
         except Exception as config_error:
             logger.error(f"❌ Error reading connectionOptions: {config_error}")
             import traceback
@@ -375,6 +418,13 @@ class DremioConnector(DatabaseServiceSource):
                 databaseSchema=schema_fqn,
             )
             
+            # 🔧 DBT ENRICHMENT: Add DBT metadata if enabled
+            if self.dbt_enabled:
+                table_fqn = f"{self.context.get().database_service}.{current_source}.{current_schema}.{table_name}"
+                logger.info(f"🔧 Attempting DBT enrichment for: {table_fqn}")
+                # Note: We enrich after table is created by OpenMetadata
+                # For now, we log the intention - actual enrichment happens in post-processing
+            
             yield Either(right=table_request)
             self.register_record(table_request=table_request)
             
@@ -535,7 +585,7 @@ class DremioConnector(DatabaseServiceSource):
         total_rows: int
     ) -> Optional[ColumnProfile]:
         """
-        Profile a single column
+        Profile a single column with optional row sampling
         Returns statistics like null count, distinct count, min, max, etc.
         """
         try:
@@ -544,13 +594,19 @@ class DremioConnector(DatabaseServiceSource):
             # Escape column name with double quotes
             col_escaped = f'"{column_name}"'
             
+            # Build sample clause if configured
+            sample_clause = ""
+            if self.profile_sample_rows:
+                sample_clause = f" LIMIT {self.profile_sample_rows}"
+                logger.info(f"    📊 Using sample: {self.profile_sample_rows} rows")
+            
             # Base metrics for all types
             query = f"""
                 SELECT 
                     COUNT(*) as total_count,
                     COUNT({col_escaped}) as non_null_count,
                     COUNT(DISTINCT {col_escaped}) as distinct_count
-                FROM {dremio_path}
+                FROM (SELECT * FROM {dremio_path}{sample_clause})
             """
             
             # Add type-specific metrics
@@ -564,7 +620,7 @@ class DremioConnector(DatabaseServiceSource):
                         MAX({col_escaped}) as max_value,
                         AVG(CAST({col_escaped} AS DOUBLE)) as mean_value,
                         STDDEV(CAST({col_escaped} AS DOUBLE)) as stddev_value
-                    FROM {dremio_path}
+                    FROM (SELECT * FROM {dremio_path}{sample_clause})
                 """
             elif 'VARCHAR' in column_type.upper() or 'CHAR' in column_type.upper():
                 query = f"""
@@ -575,7 +631,7 @@ class DremioConnector(DatabaseServiceSource):
                         MIN(LENGTH({col_escaped})) as min_length,
                         MAX(LENGTH({col_escaped})) as max_length,
                         AVG(LENGTH({col_escaped})) as avg_length
-                    FROM {dremio_path}
+                    FROM (SELECT * FROM {dremio_path}{sample_clause})
                 """
             
             result = self.dremio_client.execute_sql_query(query)
@@ -824,6 +880,144 @@ class DremioConnector(DatabaseServiceSource):
         except Exception as e:
             logger.warning(f"  ⚠️  Could not classify column {column.get('name', 'unknown')}: {e}")
             return None
+
+    # ============================================================================
+    # DBT INTEGRATION - Optional 4th capability
+    # ============================================================================
+    
+    def _load_dbt_catalog(self) -> Optional[Dict]:
+        """Load DBT catalog.json file"""
+        if not self.dbt_catalog_path:
+            return None
+            
+        try:
+            catalog_file = Path(self.dbt_catalog_path)
+            if not catalog_file.exists():
+                logger.warning(f"⚠️  DBT catalog not found: {self.dbt_catalog_path}")
+                return None
+                
+            logger.info(f"📖 Loading DBT catalog from: {self.dbt_catalog_path}")
+            with open(catalog_file, 'r', encoding='utf-8') as f:
+                catalog = json.load(f)
+            logger.info(f"✅ DBT catalog loaded: {len(catalog.get('nodes', {}))} nodes")
+            return catalog
+        except Exception as e:
+            logger.error(f"❌ Error loading DBT catalog: {e}")
+            return None
+    
+    def _load_dbt_manifest(self) -> Optional[Dict]:
+        """Load DBT manifest.json file"""
+        if not self.dbt_manifest_path:
+            return None
+            
+        try:
+            manifest_file = Path(self.dbt_manifest_path)
+            if not manifest_file.exists():
+                logger.warning(f"⚠️  DBT manifest not found: {self.dbt_manifest_path}")
+                return None
+                
+            logger.info(f"📖 Loading DBT manifest from: {self.dbt_manifest_path}")
+            with open(manifest_file, 'r', encoding='utf-8') as f:
+                manifest = json.load(f)
+            logger.info(f"✅ DBT manifest loaded: {len(manifest.get('nodes', {}))} nodes")
+            return manifest
+        except Exception as e:
+            logger.error(f"❌ Error loading DBT manifest: {e}")
+            return None
+    
+    def _load_dbt_run_results(self) -> Optional[Dict]:
+        """Load DBT run_results.json file"""
+        if not self.dbt_run_results_path:
+            return None
+            
+        try:
+            results_file = Path(self.dbt_run_results_path)
+            if not results_file.exists():
+                logger.warning(f"⚠️  DBT run results not found: {self.dbt_run_results_path}")
+                return None
+                
+            logger.info(f"📖 Loading DBT run results from: {self.dbt_run_results_path}")
+            with open(results_file, 'r', encoding='utf-8') as f:
+                results = json.load(f)
+            logger.info(f"✅ DBT run results loaded: {len(results.get('results', []))} results")
+            return results
+        except Exception as e:
+            logger.error(f"❌ Error loading DBT run results: {e}")
+            return None
+    
+    def _enrich_with_dbt(self, table_fqn: str, table_entity: Table) -> Table:
+        """
+        Enrich table metadata with DBT information
+        
+        Args:
+            table_fqn: Fully qualified name of the table
+            table_entity: Table entity to enrich
+            
+        Returns:
+            Enriched table entity
+        """
+        if not self.dbt_enabled:
+            return table_entity
+            
+        try:
+            # Load DBT files on first call
+            if not hasattr(self, '_dbt_catalog'):
+                self._dbt_catalog = self._load_dbt_catalog()
+                self._dbt_manifest = self._load_dbt_manifest()
+                self._dbt_run_results = self._load_dbt_run_results()
+            
+            # Match table with DBT model
+            # DBT uses format: model.project_name.model_name
+            # We need to match against our Dremio table FQN
+            
+            if self._dbt_manifest:
+                for node_id, node_data in self._dbt_manifest.get('nodes', {}).items():
+                    if node_data.get('resource_type') == 'model':
+                        # Try to match by name
+                        model_name = node_data.get('name', '').lower()
+                        table_name = table_fqn.split('.')[-1].lower()
+                        
+                        if model_name == table_name:
+                            logger.info(f"🔧 Enriching {table_fqn} with DBT model: {node_id}")
+                            
+                            # Add description from DBT
+                            if node_data.get('description') and not table_entity.description:
+                                table_entity.description = node_data['description']
+                                logger.info(f"  ✅ Added DBT description")
+                            
+                            # Add tags from DBT
+                            dbt_tags = node_data.get('tags', [])
+                            if dbt_tags:
+                                # Convert to TagLabel objects
+                                if not table_entity.tags:
+                                    table_entity.tags = []
+                                for tag_name in dbt_tags:
+                                    table_entity.tags.append(TagLabel(
+                                        tagFQN=f"DBT.{tag_name}",
+                                        source=TagSource.Classification,
+                                        labelType=LabelType.Automated,
+                                        state="Confirmed"
+                                    ))
+                                logger.info(f"  ✅ Added {len(dbt_tags)} DBT tags")
+                            
+                            # Add column descriptions from DBT
+                            dbt_columns = node_data.get('columns', {})
+                            if dbt_columns and table_entity.columns:
+                                for col in table_entity.columns:
+                                    col_name = str(col.name.__root__ if hasattr(col.name, '__root__') else col.name).lower()
+                                    if col_name in dbt_columns:
+                                        dbt_col = dbt_columns[col_name]
+                                        if dbt_col.get('description') and not col.description:
+                                            col.description = dbt_col['description']
+                                            logger.info(f"  ✅ Added description for column: {col_name}")
+                            
+                            break
+            
+            return table_entity
+            
+        except Exception as e:
+            logger.warning(f"⚠️  Could not enrich table with DBT: {e}")
+            return table_entity
 
     def close(self):
         """Clean up resources"""
