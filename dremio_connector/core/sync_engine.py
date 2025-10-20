@@ -81,6 +81,93 @@ class DremioAutoDiscovery:
             logger.error(f"❌ Erreur authentification: {e}")
             return False
     
+    def execute_sql_query(self, query: str) -> Optional[Dict]:
+        """
+        Execute a SQL query against Dremio and return results
+        
+        Args:
+            query: SQL query string to execute
+            
+        Returns:
+            Dict with query results including rows and schema
+        """
+        if not self.token:
+            logger.error("❌ Not authenticated. Call authenticate() first.")
+            return None
+        
+        try:
+            # Submit SQL job
+            response = requests.post(
+                f"{self.url}/api/v3/sql",
+                headers={
+                    **self.headers,
+                    "Content-Type": "application/json"
+                },
+                json={"sql": query},
+                timeout=30
+            )
+            
+            if response.status_code != 200:
+                logger.error(f"❌ Query submission failed: {response.status_code} - {response.text}")
+                return None
+            
+            job_data = response.json()
+            job_id = job_data.get("id")
+            
+            if not job_id:
+                logger.error("❌ No job ID returned from query submission")
+                return None
+            
+            # Poll for job completion (max 30 seconds)
+            import time
+            max_wait = 30
+            elapsed = 0
+            
+            while elapsed < max_wait:
+                job_response = requests.get(
+                    f"{self.url}/api/v3/job/{job_id}",
+                    headers=self.headers,
+                    timeout=10
+                )
+                
+                if job_response.status_code != 200:
+                    logger.error(f"❌ Job status check failed: {job_response.status_code}")
+                    return None
+                
+                job_status = job_response.json()
+                state = job_status.get("jobState")
+                
+                if state == "COMPLETED":
+                    # Get results
+                    results_response = requests.get(
+                        f"{self.url}/api/v3/job/{job_id}/results",
+                        headers=self.headers,
+                        timeout=10
+                    )
+                    
+                    if results_response.status_code == 200:
+                        return results_response.json()
+                    else:
+                        logger.error(f"❌ Failed to get results: {results_response.status_code}")
+                        return None
+                
+                elif state in ["FAILED", "CANCELED"]:
+                    logger.error(f"❌ Query {state}: {job_status.get('errorMessage', 'Unknown error')}")
+                    return None
+                
+                # Still running, wait
+                time.sleep(1)
+                elapsed += 1
+            
+            logger.warning(f"⚠️  Query timeout after {max_wait}s")
+            return None
+            
+        except Exception as e:
+            logger.error(f"❌ Error executing query: {e}")
+            import traceback
+            traceback.print_exc()
+            return None
+    
     def get_catalog_item(self, path: str = None) -> Optional[Dict]:
         """Récupère un élément du catalogue par path ou le catalogue racine"""
         try:

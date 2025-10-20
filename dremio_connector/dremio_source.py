@@ -3,10 +3,12 @@ Custom Dremio Connector for OpenMetadata
 
 Enhanced connector that uses DremioAutoDiscovery to find all sources, 
 databases, schemas, and tables from Dremio.
+Supports both Metadata ingestion and Profiling in the same agent.
 """
 
-from typing import Iterable, Optional, List, Tuple
+from typing import Iterable, Optional, List, Tuple, Dict, Any
 import logging
+from datetime import datetime, timezone
 
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.steps import Source
@@ -18,12 +20,17 @@ from metadata.ingestion.api.models import Either
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import CreateDatabaseSchemaRequest
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
-from metadata.generated.schema.entity.data.table import Column, DataType, TableType
+from metadata.generated.schema.entity.data.table import Column, DataType, TableType, Table, TableProfile, ColumnProfile
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseService,
 )
+from metadata.generated.schema.api.classification.createTag import CreateTagRequest
+from metadata.generated.schema.api.classification.createClassification import CreateClassificationRequest
+from metadata.generated.schema.entity.classification.tag import Tag
+from metadata.generated.schema.type.tagLabel import TagLabel, TagSource, LabelType
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -59,49 +66,65 @@ class DremioConnector(DatabaseServiceSource):
         return cls(config, metadata)
 
     def prepare(self):
-        """Initialize Dremio client and fail if not valid"""
-        dremio_url = 'http://host.docker.internal:9047'
-        username = 'admin'
-        password = 'admin123'
+        """Initialize Dremio client - requires connectionOptions"""
+        logger.info("🚀 Preparing Dremio connector...")
+        
+        dremio_url = None
+        username = None
+        password = None
+        
         try:
-            # Try to get connectionOptions from OpenMetadata config
+            # Extract from serviceConnection.__dict__['root'].config.connectionOptions.root
             if hasattr(self.config, 'serviceConnection'):
                 service_conn = self.config.serviceConnection
-                if hasattr(service_conn, '__root__'):
+                
+                # Pattern 1: Via __dict__['root'] (OpenMetadata 1.9.7 structure)
+                if hasattr(service_conn, '__dict__') and 'root' in service_conn.__dict__:
+                    root = service_conn.__dict__['root']
+                    if hasattr(root, 'config') and hasattr(root.config, 'connectionOptions'):
+                        conn_opts = root.config.connectionOptions
+                        # ConnectionOptions has a 'root' attribute containing the dict
+                        if hasattr(conn_opts, 'root') and isinstance(conn_opts.root, dict):
+                            dremio_url = conn_opts.root.get('url')
+                            username = conn_opts.root.get('username')
+                            password = conn_opts.root.get('password')
+                            logger.info(f"📋 Found connectionOptions: url={dremio_url}, username={username}")
+                        # Or ConnectionOptions might be a direct dict
+                        elif isinstance(conn_opts, dict):
+                            dremio_url = conn_opts.get('url')
+                            username = conn_opts.get('username')
+                            password = conn_opts.get('password')
+                            logger.info(f"📋 Found connectionOptions (dict): url={dremio_url}, username={username}")
+                
+                # Pattern 2: Fallback via __root__ (older structure)
+                if not dremio_url and hasattr(service_conn, '__root__'):
                     root = service_conn.__root__
-                    if hasattr(root, 'connectionOptions'):
-                        conn_options = root.connectionOptions
-                        if isinstance(conn_options, dict) and conn_options:
-                            dremio_url = conn_options.get('url', dremio_url)
-                            username = conn_options.get('username', username)
-                            password = conn_options.get('password', password)
-                            logger.info(f"📋 Found connectionOptions (Pattern 1): {list(conn_options.keys())}")
-                    elif hasattr(root, 'config') and hasattr(root.config, 'connectionOptions'):
-                        conn_options = root.config.connectionOptions
-                        if isinstance(conn_options, dict) and conn_options:
-                            dremio_url = conn_options.get('url', dremio_url)
-                            username = conn_options.get('username', username)
-                            password = conn_options.get('password', password)
-                            logger.info(f"📋 Found connectionOptions (Pattern 1b): {list(conn_options.keys())}")
-                elif hasattr(service_conn, 'connectionOptions'):
-                    conn_options = service_conn.connectionOptions
-                    if isinstance(conn_options, dict) and conn_options:
-                        dremio_url = conn_options.get('url', dremio_url)
-                        username = conn_options.get('username', username)
-                        password = conn_options.get('password', password)
-                        logger.info(f"📋 Found connectionOptions (Pattern 2): {list(conn_options.keys())}")
-                elif hasattr(service_conn, '__dict__'):
-                    if 'connectionOptions' in service_conn.__dict__:
-                        conn_options = service_conn.__dict__['connectionOptions']
-                        if isinstance(conn_options, dict) and conn_options:
-                            dremio_url = conn_options.get('url', dremio_url)
-                            username = conn_options.get('username', username)
-                            password = conn_options.get('password', password)
-                            logger.info(f"📋 Found connectionOptions (Pattern 3): {list(conn_options.keys())}")
+                    if hasattr(root, 'config') and hasattr(root.config, 'connectionOptions'):
+                        conn_opts = root.config.connectionOptions
+                        if hasattr(conn_opts, 'root') and isinstance(conn_opts.root, dict):
+                            dremio_url = conn_opts.root.get('url')
+                            username = conn_opts.root.get('username')
+                            password = conn_opts.root.get('password')
+                            logger.info(f"📋 Found connectionOptions (__root__): url={dremio_url}, username={username}")
+                        elif isinstance(conn_opts, dict):
+                            dremio_url = conn_opts.get('url')
+                            username = conn_opts.get('username')
+                            password = conn_opts.get('password')
+                            logger.info(f"📋 Found connectionOptions (__root__ dict): url={dremio_url}, username={username}")
         except Exception as config_error:
-            logger.warning(f"⚠️  Could not read connectionOptions, using defaults: {config_error}")
+            logger.error(f"❌ Error reading connectionOptions: {config_error}")
             import traceback
             traceback.print_exc()
+
+        # Validate required parameters
+        if not dremio_url or not username or not password:
+            missing = []
+            if not dremio_url: missing.append('url')
+            if not username: missing.append('username')
+            if not password: missing.append('password')
+            error_msg = f"❌ Missing required connectionOptions: {', '.join(missing)}"
+            logger.error(error_msg)
+            raise ValueError(error_msg)
 
         logger.info(f"🔌 Connecting to Dremio at {dremio_url} as {username}")
         self.dremio_client = DremioAutoDiscovery(
@@ -170,9 +193,38 @@ class DremioConnector(DatabaseServiceSource):
             traceback.print_exc()
 
     def get_database_schema_names(self) -> Iterable[str]:
-        """Return list of schema names (one 'default' schema per database)"""
-        logger.info(f"🗂️  Yielding default schema")
-        yield "default"
+        """Return list of schema names from Dremio source"""
+        if not self.dremio_client:
+            logger.error("❌ Dremio client not initialized")
+            return
+        
+        try:
+            current_source = self.context.get().database
+            logger.info(f"🔍 Getting schemas for source: {current_source}")
+            
+            # Get source details - use string path separated by /
+            source_details = self.dremio_client.get_catalog_item(current_source)
+            
+            if not source_details or 'children' not in source_details:
+                logger.warning(f"⚠️  No children found for source {current_source}")
+                return
+            
+            # List all folders/schemas in this source
+            children = source_details.get('children', [])
+            logger.info(f"� Found {len(children)} items in source {current_source}")
+            
+            for child in children:
+                child_path = child.get('path', [])
+                if len(child_path) >= 2:
+                    schema_name = child_path[1]  # Second element is the schema
+                    child_type = child.get('type', 'UNKNOWN')
+                    logger.info(f"🗂️  Schema: {schema_name} (type: {child_type})")
+                    yield schema_name
+                    
+        except Exception as e:
+            logger.error(f"❌ Error getting schema names: {e}")
+            import traceback
+            traceback.print_exc()
 
     def yield_database_schema(self, schema_name: str) -> Iterable[Either[CreateDatabaseSchemaRequest]]:
         """Create a schema for the current database"""
@@ -202,20 +254,53 @@ class DremioConnector(DatabaseServiceSource):
             traceback.print_exc()
 
     def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, TableType]]]:
-        """Return list of tables (one metadata table per database)"""
+        """Return list of tables from Dremio schema"""
+        if not self.dremio_client:
+            logger.error("❌ Dremio client not initialized")
+            return
+        
         try:
-            current_db = self.context.get().database
-            table_name = f"{current_db}_metadata"
-            logger.info(f"📋 Yielding table: {table_name}")
-            yield (table_name, TableType.Regular)
+            current_source = self.context.get().database
+            current_schema = self.context.get().database_schema
+            logger.info(f"🔍 Getting tables for {current_source}.{current_schema}")
             
+            # Get schema details - use path separated by /
+            schema_path_str = f"{current_source}/{current_schema}"
+            schema_details = self.dremio_client.get_catalog_item(schema_path_str)
+            
+            if not schema_details or 'children' not in schema_details:
+                logger.warning(f"⚠️  No tables found in {current_source}.{current_schema}")
+                return
+            
+            # List all tables in this schema
+            children = schema_details.get('children', [])
+            logger.info(f"� Found {len(children)} items in schema {current_schema}")
+            
+            for child in children:
+                child_path = child.get('path', [])
+                child_type = child.get('type', 'UNKNOWN')
+                
+                if len(child_path) >= 3:
+                    table_name = child_path[2]  # Third element is the table
+                    
+                    # Map Dremio types to OpenMetadata TableType
+                    if child_type in ['PHYSICAL_DATASET', 'TABLE']:
+                        om_type = TableType.Regular
+                    elif child_type == 'VIRTUAL_DATASET':
+                        om_type = TableType.View
+                    else:
+                        om_type = TableType.Regular
+                    
+                    logger.info(f"📋 Table: {table_name} (Dremio type: {child_type} -> OM type: {om_type})")
+                    yield (table_name, om_type)
+                    
         except Exception as e:
             logger.error(f"❌ Error getting table names: {e}")
             import traceback
             traceback.print_exc()
 
     def yield_table(self, table_name_and_type: Tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:
-        """Create a metadata table"""
+        """Create a table with real columns from Dremio"""
         table_name, table_type = table_name_and_type
         
         try:
@@ -227,42 +312,64 @@ class DremioConnector(DatabaseServiceSource):
                 schema_name=self.context.get().database_schema,
             )
             
-            logger.info(f"📋 Creating table: {table_name} in schema {self.context.get().database_schema}")
+            current_source = self.context.get().database
+            current_schema = self.context.get().database_schema
             
-            columns = [
-                Column(
-                    name="source_id",
-                    displayName="Source ID",
+            logger.info(f"📋 Creating table: {table_name} in {current_source}.{current_schema}")
+            
+            # Get table details from Dremio - use path separated by /
+            table_path_str = f"{current_source}/{current_schema}/{table_name}"
+            table_details = self.dremio_client.get_catalog_item(table_path_str)
+            
+            columns = []
+            if table_details and 'fields' in table_details:
+                # Real columns from Dremio
+                for field in table_details.get('fields', []):
+                    field_name = field.get('name', 'unknown')
+                    field_type = field.get('type', {}).get('name', 'VARCHAR')
+                    
+                    # Map Dremio types to OpenMetadata DataType
+                    om_type = self._map_dremio_type_to_om(field_type)
+                    
+                    # Pour VARCHAR et types similaires, OpenMetadata exige dataLength
+                    column_args = {
+                        "name": field_name,
+                        "displayName": field_name,
+                        "dataType": om_type,
+                        "description": f"Column from Dremio (type: {field_type})"
+                    }
+                    
+                    # Ajouter dataLength pour les types qui l'exigent
+                    if om_type in (DataType.VARCHAR, DataType.CHAR, DataType.BINARY, DataType.VARBINARY):
+                        column_args["dataLength"] = 65535  # Taille par défaut pour VARCHAR
+                    
+                    # 🏷️ AUTO-CLASSIFICATION : Get tags for this column BEFORE creating it
+                    column_dict = {
+                        'name': field_name,
+                        'dataType': str(om_type)
+                    }
+                    tags = self.get_column_tag_labels(f"{current_source}.{current_schema}.{table_name}", column_dict)
+                    if tags:
+                        column_args["tags"] = tags
+                        logger.info(f"  🏷️ {field_name}: Adding {len(tags)} tags to column definition")
+                    
+                    columns.append(Column(**column_args))
+                    logger.info(f"  ├─ Column: {field_name} ({field_type} -> {om_type})")
+            else:
+                # Fallback: dummy column if no schema available
+                logger.warning(f"⚠️  No fields found for table {table_name}, using dummy column")
+                columns.append(Column(
+                    name="data",
+                    displayName="Data",
                     dataType=DataType.VARCHAR,
-                    dataLength=100,
-                    description="Dremio source identifier"
-                ),
-                Column(
-                    name="source_name",
-                    displayName="Source Name",
-                    dataType=DataType.VARCHAR,
-                    dataLength=255,
-                    description="Name of the Dremio source"
-                ),
-                Column(
-                    name="source_type",
-                    displayName="Source Type",
-                    dataType=DataType.VARCHAR,
-                    dataLength=50,
-                    description="Type of the source (SOURCE, SPACE, etc.)"
-                ),
-                Column(
-                    name="created_at",
-                    displayName="Created At",
-                    dataType=DataType.TIMESTAMP,
-                    description="Creation timestamp"
-                ),
-            ]
+                    dataLength=65535,
+                    description="No schema information available"
+                ))
             
             table_request = CreateTableRequest(
                 name=table_name,
                 displayName=table_name,
-                description=f"Metadata table for Dremio source {self.context.get().database}",
+                description=f"Table {table_name} from Dremio source {current_source}",
                 tableType=table_type,
                 columns=columns,
                 databaseSchema=schema_fqn,
@@ -275,6 +382,31 @@ class DremioConnector(DatabaseServiceSource):
             logger.error(f"❌ Error yielding table {table_name}: {e}")
             import traceback
             traceback.print_exc()
+    
+    def _map_dremio_type_to_om(self, dremio_type: str) -> DataType:
+        """Map Dremio data types to OpenMetadata DataType"""
+        type_mapping = {
+            'INTEGER': DataType.INT,
+            'BIGINT': DataType.BIGINT,
+            'FLOAT': DataType.FLOAT,
+            'DOUBLE': DataType.DOUBLE,
+            'DECIMAL': DataType.DECIMAL,
+            'VARCHAR': DataType.VARCHAR,
+            'CHAR': DataType.CHAR,
+            'TEXT': DataType.TEXT,
+            'BOOLEAN': DataType.BOOLEAN,
+            'DATE': DataType.DATE,
+            'TIME': DataType.TIME,
+            'TIMESTAMP': DataType.TIMESTAMP,
+            'BINARY': DataType.BINARY,
+            'ARRAY': DataType.ARRAY,
+            'MAP': DataType.MAP,
+            'STRUCT': DataType.STRUCT,
+            'JSON': DataType.JSON,
+        }
+        
+        dremio_type_upper = dremio_type.upper()
+        return type_mapping.get(dremio_type_upper, DataType.VARCHAR)
 
     # ============================================================================
     # REQUIRED ABSTRACT METHODS (stubs for optional functionality)
@@ -302,21 +434,400 @@ class DremioConnector(DatabaseServiceSource):
             if self.dremio_client and self.dremio_client.authenticate():
                 logger.info("✅ Dremio connection test successful")
             else:
-                logger.error("❌ Dremio connection test failed")
+                raise Exception("Failed to authenticate with Dremio")
         except Exception as e:
-            logger.error(f"❌ Error testing connection: {e}")
+            logger.error(f"❌ Connection test failed: {e}")
+            raise
 
-    @classmethod
-    def get_available_agents(cls) -> List[dict]:
+    # ============================================================================
+    # PROFILING METHODS
+    # ============================================================================
+
+    def get_profile_metrics(
+        self, 
+        table: Table,
+        profile_sample: Optional[float] = None,
+    ) -> Tuple[Optional[TableProfile], List[ColumnProfile]]:
         """
-        Expose all agent types to OpenMetadata for UI discovery.
+        Profile a Dremio table and return metrics
+        
+        This method is called by OpenMetadata profiling workflow when
+        "Enable Profiler" is checked in the metadata ingestion configuration.
+        
+        Args:
+            table: OpenMetadata Table entity to profile
+            profile_sample: Percentage of data to sample (0-100)
+            
+        Returns:
+            Tuple of (TableProfile, List of ColumnProfiles)
         """
-        from dremio_connector.agents.agent_manager import AgentRegistry
-        agents = AgentRegistry.get_available_agents()
-        logger.info(f"📋 Agents exposés à OpenMetadata: {[a['type'] for a in agents]}")
-        return agents
+        logger.info(f"🔬 Profiling table: {table.fullyQualifiedName}")
+        
+        try:
+            # Extract source/schema/table from FQN
+            # Format: service.database.schema.table
+            fqn_parts = table.fullyQualifiedName.split('.')
+            if len(fqn_parts) < 4:
+                logger.warning(f"⚠️  Invalid FQN format: {table.fullyQualifiedName}")
+                return None, []
+            
+            database = fqn_parts[1]  # Dremio source
+            schema = fqn_parts[2]     # Dremio folder/schema
+            table_name = fqn_parts[3]
+            
+            logger.info(f"  📊 Analyzing: {database}.{schema}.{table_name}")
+            
+            # Build Dremio path (with quotes for safety)
+            dremio_path = f'"{database}"."{schema}"."{table_name}"'
+            
+            # 1. Get row count
+            row_count = self._get_row_count(dremio_path)
+            
+            # 2. Get column statistics
+            column_profiles = []
+            if table.columns:
+                for column in table.columns:
+                    col_profile = self._profile_column(
+                        dremio_path=dremio_path,
+                        column_name=column.name,
+                        column_type=str(column.dataType),
+                        total_rows=row_count
+                    )
+                    if col_profile:
+                        column_profiles.append(col_profile)
+            
+            # 3. Create TableProfile
+            table_profile = TableProfile(
+                timestamp=int(datetime.now(timezone.utc).timestamp() * 1000),
+                rowCount=row_count,
+                columnCount=len(table.columns) if table.columns else 0,
+                profileSample=profile_sample or 100.0,
+            )
+            
+            logger.info(f"  ✅ Profile complete: {row_count} rows, {len(column_profiles)} columns profiled")
+            
+            return table_profile, column_profiles
+            
+        except Exception as e:
+            logger.error(f"❌ Error profiling table {table.fullyQualifiedName}: {e}")
+            import traceback
+            traceback.print_exc()
+            return None, []
+
+    def _get_row_count(self, dremio_path: str) -> int:
+        """Get total row count for a table"""
+        try:
+            query = f"SELECT COUNT(*) as row_count FROM {dremio_path}"
+            result = self.dremio_client.execute_sql_query(query)
+            
+            if result and 'rows' in result and len(result['rows']) > 0:
+                return int(result['rows'][0].get('row_count', 0))
+            return 0
+        except Exception as e:
+            logger.warning(f"⚠️  Could not get row count for {dremio_path}: {e}")
+            return 0
+
+    def _profile_column(
+        self, 
+        dremio_path: str, 
+        column_name: str, 
+        column_type: str,
+        total_rows: int
+    ) -> Optional[ColumnProfile]:
+        """
+        Profile a single column
+        Returns statistics like null count, distinct count, min, max, etc.
+        """
+        try:
+            logger.info(f"    📈 Profiling column: {column_name} ({column_type})")
+            
+            # Escape column name with double quotes
+            col_escaped = f'"{column_name}"'
+            
+            # Base metrics for all types
+            query = f"""
+                SELECT 
+                    COUNT(*) as total_count,
+                    COUNT({col_escaped}) as non_null_count,
+                    COUNT(DISTINCT {col_escaped}) as distinct_count
+                FROM {dremio_path}
+            """
+            
+            # Add type-specific metrics
+            if 'INT' in column_type.upper() or column_type.upper() in ('BIGINT', 'DOUBLE', 'FLOAT', 'DECIMAL'):
+                query = f"""
+                    SELECT 
+                        COUNT(*) as total_count,
+                        COUNT({col_escaped}) as non_null_count,
+                        COUNT(DISTINCT {col_escaped}) as distinct_count,
+                        MIN({col_escaped}) as min_value,
+                        MAX({col_escaped}) as max_value,
+                        AVG(CAST({col_escaped} AS DOUBLE)) as mean_value,
+                        STDDEV(CAST({col_escaped} AS DOUBLE)) as stddev_value
+                    FROM {dremio_path}
+                """
+            elif 'VARCHAR' in column_type.upper() or 'CHAR' in column_type.upper():
+                query = f"""
+                    SELECT 
+                        COUNT(*) as total_count,
+                        COUNT({col_escaped}) as non_null_count,
+                        COUNT(DISTINCT {col_escaped}) as distinct_count,
+                        MIN(LENGTH({col_escaped})) as min_length,
+                        MAX(LENGTH({col_escaped})) as max_length,
+                        AVG(LENGTH({col_escaped})) as avg_length
+                    FROM {dremio_path}
+                """
+            
+            result = self.dremio_client.execute_sql_query(query)
+            
+            if not result or 'rows' not in result or len(result['rows']) == 0:
+                logger.warning(f"    ⚠️  No statistics returned for column {column_name}")
+                return None
+            
+            stats = result['rows'][0]
+            
+            # Calculate metrics
+            total_count = int(stats.get('total_count', 0))
+            non_null_count = int(stats.get('non_null_count', 0))
+            null_count = total_count - non_null_count
+            null_proportion = (null_count / total_count) if total_count > 0 else 0.0
+            distinct_count = int(stats.get('distinct_count', 0))
+            unique_proportion = (distinct_count / total_count) if total_count > 0 else 0.0
+            
+            # Create ColumnProfile
+            profile = ColumnProfile(
+                name=column_name,
+                timestamp=int(datetime.now(timezone.utc).timestamp() * 1000),
+                valuesCount=total_count,
+                nullCount=null_count,
+                nullProportion=null_proportion,
+                distinctCount=distinct_count,
+                uniqueCount=distinct_count,
+                uniqueProportion=unique_proportion,
+            )
+            
+            # Add numeric-specific metrics
+            if 'INT' in column_type.upper() or column_type.upper() in ('BIGINT', 'DOUBLE', 'FLOAT', 'DECIMAL'):
+                if 'min_value' in stats and stats['min_value'] is not None:
+                    profile.min = float(stats['min_value'])
+                if 'max_value' in stats and stats['max_value'] is not None:
+                    profile.max = float(stats['max_value'])
+                if 'mean_value' in stats and stats['mean_value'] is not None:
+                    profile.mean = float(stats['mean_value'])
+                if 'stddev_value' in stats and stats['stddev_value'] is not None:
+                    profile.stddev = float(stats['stddev_value'])
+            
+            # Add string-specific metrics
+            elif 'VARCHAR' in column_type.upper() or 'CHAR' in column_type.upper():
+                if 'min_length' in stats and stats['min_length'] is not None:
+                    profile.minLength = float(stats['min_length'])
+                if 'max_length' in stats and stats['max_length'] is not None:
+                    profile.maxLength = float(stats['max_length'])
+                if 'avg_length' in stats and stats['avg_length'] is not None:
+                    profile.meanLength = float(stats['avg_length'])
+            
+            logger.info(f"    ✅ Column {column_name}: {non_null_count}/{total_count} values, {distinct_count} distinct, {null_count} nulls")
+            
+            return profile
+            
+        except Exception as e:
+            logger.warning(f"    ⚠️  Could not profile column {column_name}: {e}")
+            return None
+
+    def yield_tag(self, *args, **kwargs) -> Iterable[Either[CreateTagRequest]]:
+        """
+        Create classification tags for automatic data classification.
+        Called by OpenMetadata when "Enable Auto Classification" is checked.
+        
+        Creates PII (Personally Identifiable Information) tags for sensitive data.
+        """
+        logger.info("🏷️  Creating classification tags for auto-tagging")
+        
+        try:
+            # Define PII classification tags
+            pii_tags = [
+                {
+                    "name": "Email",
+                    "description": "Email addresses detected automatically",
+                    "classification": "PII"
+                },
+                {
+                    "name": "Phone",
+                    "description": "Phone numbers detected automatically",
+                    "classification": "PII"
+                },
+                {
+                    "name": "Name",
+                    "description": "Personal names detected automatically",
+                    "classification": "PII"
+                },
+                {
+                    "name": "Address",
+                    "description": "Physical addresses detected automatically",
+                    "classification": "PII"
+                },
+                {
+                    "name": "ID",
+                    "description": "Identification numbers (SSN, etc.) detected automatically",
+                    "classification": "PII"
+                },
+                {
+                    "name": "Credential",
+                    "description": "Credentials, passwords, tokens detected automatically",
+                    "classification": "Sensitive"
+                },
+                {
+                    "name": "CreditCard",
+                    "description": "Credit card numbers detected automatically",
+                    "classification": "Financial"
+                },
+                {
+                    "name": "BankAccount",
+                    "description": "Bank account numbers detected automatically",
+                    "classification": "Financial"
+                }
+            ]
+            
+            for tag_info in pii_tags:
+                try:
+                    tag_request = CreateTagRequest(
+                        name=tag_info["name"],
+                        description=tag_info["description"],
+                        classification=tag_info["classification"]
+                    )
+                    yield Either(right=tag_request)
+                    logger.info(f"  ✅ Created tag: {tag_info['classification']}.{tag_info['name']}")
+                except Exception as tag_error:
+                    logger.warning(f"  ⚠️  Could not create tag {tag_info['name']}: {tag_error}")
+                    
+        except Exception as e:
+            logger.error(f"❌ Error creating classification tags: {e}")
+
+    def get_column_tag_labels(
+        self,
+        table_name: str,
+        column: Dict[str, Any]
+    ) -> Optional[List[TagLabel]]:
+        """
+        Auto-classify columns based on name patterns and data types.
+        Called by OpenMetadata for each column when "Enable Auto Classification" is checked.
+        
+        Args:
+            table_name: Name of the table
+            column: Column dict with 'name' and 'dataType' keys
+            
+        Returns:
+            List of TagLabel objects for detected classifications
+        """
+        logger.info(f"🔍 get_column_tag_labels() CALLED for {table_name}.{column.get('name', 'unknown')}")
+        try:
+            # Extract column name from ColumnName object or string
+            col_name_obj = column.get('name', '')
+            if hasattr(col_name_obj, '__root__'):
+                column_name = col_name_obj.__root__.lower()
+            else:
+                column_name = str(col_name_obj).lower()
+            
+            column_type = str(column.get('dataType', '')).upper()
+            
+            logger.info(f"  📝 Analyzing column: {column_name} (type: {column_type})")
+            
+            tags = []
+            
+            # Email detection
+            if any(pattern in column_name for pattern in ['email', 'mail', 'e_mail', 'courriel']):
+                tags.append(TagLabel(
+                    tagFQN="PII.Email",
+                    source=TagSource.Classification,
+                    labelType=LabelType.Automated,
+                    state="Suggested"
+                ))
+                logger.debug(f"  🏷️  {table_name}.{column['name']}: Detected EMAIL")
+            
+            # Phone detection
+            if any(pattern in column_name for pattern in ['phone', 'tel', 'telephone', 'mobile', 'cell']):
+                tags.append(TagLabel(
+                    tagFQN="PII.Phone",
+                    source=TagSource.Classification,
+                    labelType=LabelType.Automated,
+                    state="Suggested"
+                ))
+                logger.debug(f"  🏷️  {table_name}.{column['name']}: Detected PHONE")
+            
+            # Name detection
+            if any(pattern in column_name for pattern in ['name', 'nom', 'prenom', 'firstname', 'lastname', 'fullname']):
+                tags.append(TagLabel(
+                    tagFQN="PII.Name",
+                    source=TagSource.Classification,
+                    labelType=LabelType.Automated,
+                    state="Suggested"
+                ))
+                logger.debug(f"  🏷️  {table_name}.{column['name']}: Detected NAME")
+            
+            # Address detection
+            if any(pattern in column_name for pattern in ['address', 'adresse', 'street', 'city', 'ville', 'zip', 'postal', 'country', 'pays']):
+                tags.append(TagLabel(
+                    tagFQN="PII.Address",
+                    source=TagSource.Classification,
+                    labelType=LabelType.Automated,
+                    state="Suggested"
+                ))
+                logger.debug(f"  🏷️  {table_name}.{column['name']}: Detected ADDRESS")
+            
+            # ID detection
+            if any(pattern in column_name for pattern in ['ssn', 'social_security', 'passport', 'license', 'licence']):
+                tags.append(TagLabel(
+                    tagFQN="PII.ID",
+                    source=TagSource.Classification,
+                    labelType=LabelType.Automated,
+                    state="Suggested"
+                ))
+                logger.debug(f"  🏷️  {table_name}.{column['name']}: Detected ID")
+            
+            # Credential detection
+            if any(pattern in column_name for pattern in ['password', 'passwd', 'pwd', 'token', 'secret', 'key', 'credential']):
+                tags.append(TagLabel(
+                    tagFQN="Sensitive.Credential",
+                    source=TagSource.Classification,
+                    labelType=LabelType.Automated,
+                    state="Suggested"
+                ))
+                logger.debug(f"  🏷️  {table_name}.{column['name']}: Detected CREDENTIAL")
+            
+            # Credit card detection
+            if any(pattern in column_name for pattern in ['credit_card', 'creditcard', 'cc_number', 'card_number', 'carte_credit']):
+                tags.append(TagLabel(
+                    tagFQN="Financial.CreditCard",
+                    source=TagSource.Classification,
+                    labelType=LabelType.Automated,
+                    state="Suggested"
+                ))
+                logger.debug(f"  🏷️  {table_name}.{column['name']}: Detected CREDIT CARD")
+            
+            # Bank account detection
+            if any(pattern in column_name for pattern in ['account', 'iban', 'swift', 'routing', 'bank_account', 'compte_bancaire']):
+                tags.append(TagLabel(
+                    tagFQN="Financial.BankAccount",
+                    source=TagSource.Classification,
+                    labelType=LabelType.Automated,
+                    state="Suggested"
+                ))
+                logger.debug(f"  🏷️  {table_name}.{column['name']}: Detected BANK ACCOUNT")
+            
+            if tags:
+                logger.info(f"  ✅ {table_name}.{column['name']}: Applied {len(tags)} classification tags: {[t.tagFQN for t in tags]}")
+            else:
+                logger.info(f"  ⚠️  {table_name}.{column['name']}: No tags detected")
+            
+            return tags if tags else None
+            
+        except Exception as e:
+            logger.warning(f"  ⚠️  Could not classify column {column.get('name', 'unknown')}: {e}")
+            return None
 
     def close(self):
-        """Cleanup"""
+        """Clean up resources"""
         logger.info("👋 Closing Dremio connector")
-        self.dremio_client = None
+        if self.dremio_client:
+            self.dremio_client = None
+

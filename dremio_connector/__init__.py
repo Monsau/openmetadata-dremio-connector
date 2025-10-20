@@ -16,10 +16,12 @@ __author__ = "Dremio OpenMetadataTeam"
 from dremio_connector.core.sync_engine import DremioOpenMetadataSync, sync_dremio_to_openmetadata
 from dremio_connector.clients.dremio_client import DremioClient
 from dremio_connector.clients.openmetadata_client import OpenMetadataClient
+from dremio_connector.dremio_source import DremioConnector
 
 __all__ = [
     "DremioOpenMetadataSync",
     "sync_dremio_to_openmetadata",
     "DremioClient", 
     "OpenMetadataClient",
+    "DremioConnector",
 ]
