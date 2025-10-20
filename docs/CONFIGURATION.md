@@ -2,7 +2,42 @@
 
 ## 📋 Vue d'ensemble
 
-Le connector Dremio pour OpenMetadata se configure **entièrement via `connectionOptions`** dans l'interface UI.
+Le connector Dremio pour OpenMetadata se c### Configuration avec Profiling Optimisé
+
+```json
+{
+  "url": "http://dremio:9047",
+  "username": "admin",
+  "password": "admin123",
+  "profileSampleRows": 50000
+}
+```
+
+**Ce qui est activé :**
+- ✅ Metadata ingestion
+- ✅ Auto-classification (activée par défaut)
+- ✅ Profiling sur 50,000 lignes sample
+- ❌ DBT
+
+### Configuration sans Classification
+
+```json
+{
+  "url": "http://dremio:9047",
+  "username": "admin",
+  "password": "admin123",
+  "classificationEnabled": false,
+  "profileSampleRows": 50000
+}
+```
+
+**Ce qui est activé :**
+- ✅ Metadata ingestion
+- ❌ Auto-classification (désactivée)
+- ✅ Profiling sur 50,000 lignes sample
+- ❌ DBT
+
+### Configuration avec DBT (sans sampling)ment via `connectionOptions`** dans l'interface UI.
 
 **Aucun fichier YAML n'est nécessaire** - toutes les options sont passées directement dans la configuration du service.
 
@@ -16,6 +51,7 @@ Le connector Dremio pour OpenMetadata se configure **entièrement via `connectio
   "username": "admin",
   "password": "admin123",
   "profileSampleRows": 10000,
+  "classificationEnabled": true,
   "dbtEnabled": true,
   "dbtCatalogPath": "/path/to/dbt/target/catalog.json",
   "dbtManifestPath": "/path/to/dbt/target/manifest.json",
@@ -60,7 +96,23 @@ Le connector Dremio pour OpenMetadata se configure **entièrement via `connectio
 | 1M - 10M | 50,000 - 100,000 |
 | > 10M | 100,000 - 500,000 |
 
-### 3. Intégration DBT (Optionnel)
+### 3. Auto-Classification (Optionnel)
+
+| Paramètre | Type | Description | Défaut |
+|-----------|------|-------------|--------|
+| `classificationEnabled` | boolean | Activer la classification automatique | `true` |
+
+**Comportement :**
+
+- **`classificationEnabled: true`** ou absent : Tags PII/Sensitive/Financial appliqués automatiquement
+- **`classificationEnabled: false`** : Pas de classification automatique
+
+**Tags détectés :**
+- PII: Email, Phone, Name, Address, ID
+- Sensitive: Credential
+- Financial: CreditCard, BankAccount
+
+### 4. Intégration DBT (Optionnel)
 
 | Paramètre | Type | Description | Exemple |
 |-----------|------|-------------|---------|
@@ -114,6 +166,7 @@ Le connector Dremio pour OpenMetadata se configure **entièrement via `connectio
   "username": "admin",
   "password": "admin123",
   "profileSampleRows": 100000,
+  "classificationEnabled": true,
   "dbtEnabled": true,
   "dbtCatalogPath": "/opt/dbt/myproject/target/catalog.json",
   "dbtManifestPath": "/opt/dbt/myproject/target/manifest.json",

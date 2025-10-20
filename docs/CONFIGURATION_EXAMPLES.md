@@ -21,6 +21,18 @@
 }
 ```
 
+## Configuration sans Classification
+
+```json
+{
+  "url": "http://host.docker.internal:9047",
+  "username": "admin",
+  "password": "admin123",
+  "classificationEnabled": false,
+  "profileSampleRows": 10000
+}
+```
+
 ## Configuration avec DBT (sans sampling)
 
 ```json
@@ -42,6 +54,7 @@
   "username": "admin",
   "password": "admin123",
   "profileSampleRows": 50000,
+  "classificationEnabled": true,
   "dbtEnabled": true,
   "dbtCatalogPath": "/opt/dbt/target/catalog.json",
   "dbtManifestPath": "/opt/dbt/target/manifest.json",
@@ -79,6 +92,11 @@
 - **1000-10000** : Rapide, bon pour dev/test
 - **10000-100000** : Équilibré, bon pour prod
 - **> 100000** : Pour très grandes tables (> 10M lignes)
+
+### classificationEnabled
+
+- **Non défini ou true** : Classification automatique activée (PII/Sensitive/Financial)
+- **false** : Pas de classification automatique
 
 ### DBT
 

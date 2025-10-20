@@ -77,6 +77,7 @@ class DremioConnector(DatabaseServiceSource):
         
         # Configuration options with defaults
         self.profile_sample_rows = None  # Number of rows for profiling (None = all rows)
+        self.classification_enabled = True  # Enable auto-classification (default: True)
         self.dbt_enabled = False
         self.dbt_catalog_path = None
         self.dbt_manifest_path = None
@@ -101,6 +102,7 @@ class DremioConnector(DatabaseServiceSource):
                             
                             # Extract optional configuration
                             self.profile_sample_rows = opts.get('profileSampleRows')
+                            self.classification_enabled = opts.get('classificationEnabled', True)
                             self.dbt_enabled = opts.get('dbtEnabled', False)
                             self.dbt_catalog_path = opts.get('dbtCatalogPath')
                             self.dbt_manifest_path = opts.get('dbtManifestPath')
@@ -108,6 +110,7 @@ class DremioConnector(DatabaseServiceSource):
                             
                             logger.info(f"📋 Found connectionOptions: url={dremio_url}, username={username}")
                             logger.info(f"📊 Profiling sample rows: {self.profile_sample_rows or 'all rows'}")
+                            logger.info(f"🏷️  Classification enabled: {self.classification_enabled}")
                             logger.info(f"🔧 DBT enabled: {self.dbt_enabled}")
                             
                         # Or ConnectionOptions might be a direct dict
@@ -116,12 +119,14 @@ class DremioConnector(DatabaseServiceSource):
                             username = conn_opts.get('username')
                             password = conn_opts.get('password')
                             self.profile_sample_rows = conn_opts.get('profileSampleRows')
+                            self.classification_enabled = conn_opts.get('classificationEnabled', True)
                             self.dbt_enabled = conn_opts.get('dbtEnabled', False)
                             self.dbt_catalog_path = conn_opts.get('dbtCatalogPath')
                             self.dbt_manifest_path = conn_opts.get('dbtManifestPath')
                             self.dbt_run_results_path = conn_opts.get('dbtRunResultsPath')
                             logger.info(f"📋 Found connectionOptions (dict): url={dremio_url}, username={username}")
                             logger.info(f"📊 Profiling sample rows: {self.profile_sample_rows or 'all rows'}")
+                            logger.info(f"🏷️  Classification enabled: {self.classification_enabled}")
                             logger.info(f"🔧 DBT enabled: {self.dbt_enabled}")
                 
                 # Pattern 2: Fallback via __root__ (older structure)
@@ -135,24 +140,28 @@ class DremioConnector(DatabaseServiceSource):
                             username = opts.get('username')
                             password = opts.get('password')
                             self.profile_sample_rows = opts.get('profileSampleRows')
+                            self.classification_enabled = opts.get('classificationEnabled', True)
                             self.dbt_enabled = opts.get('dbtEnabled', False)
                             self.dbt_catalog_path = opts.get('dbtCatalogPath')
                             self.dbt_manifest_path = opts.get('dbtManifestPath')
                             self.dbt_run_results_path = opts.get('dbtRunResultsPath')
                             logger.info(f"📋 Found connectionOptions (__root__): url={dremio_url}, username={username}")
                             logger.info(f"📊 Profiling sample rows: {self.profile_sample_rows or 'all rows'}")
+                            logger.info(f"🏷️  Classification enabled: {self.classification_enabled}")
                             logger.info(f"🔧 DBT enabled: {self.dbt_enabled}")
                         elif isinstance(conn_opts, dict):
                             dremio_url = conn_opts.get('url')
                             username = conn_opts.get('username')
                             password = conn_opts.get('password')
                             self.profile_sample_rows = conn_opts.get('profileSampleRows')
+                            self.classification_enabled = conn_opts.get('classificationEnabled', True)
                             self.dbt_enabled = conn_opts.get('dbtEnabled', False)
                             self.dbt_catalog_path = conn_opts.get('dbtCatalogPath')
                             self.dbt_manifest_path = conn_opts.get('dbtManifestPath')
                             self.dbt_run_results_path = conn_opts.get('dbtRunResultsPath')
                             logger.info(f"📋 Found connectionOptions (__root__ dict): url={dremio_url}, username={username}")
                             logger.info(f"📊 Profiling sample rows: {self.profile_sample_rows or 'all rows'}")
+                            logger.info(f"🏷️  Classification enabled: {self.classification_enabled}")
                             logger.info(f"🔧 DBT enabled: {self.dbt_enabled}")
         except Exception as config_error:
             logger.error(f"❌ Error reading connectionOptions: {config_error}")
@@ -775,6 +784,10 @@ class DremioConnector(DatabaseServiceSource):
         Returns:
             List of TagLabel objects for detected classifications
         """
+        # Check if classification is enabled
+        if not self.classification_enabled:
+            return None
+            
         logger.info(f"🔍 get_column_tag_labels() CALLED for {table_name}.{column.get('name', 'unknown')}")
         try:
             # Extract column name from ColumnName object or string
